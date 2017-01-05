@@ -1,5 +1,5 @@
 # HOW TO TRAIN YOUR ROBOT 
-:)
+Work in progress... :)
 ![alt tag](https://github.com/Anadeprado/how-to-train-your-robot/blob/master/at-as.jpg)
 
 ## ICE-QUEEN ROBOT: Q-Learning AirHockey ROBOT

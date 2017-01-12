@@ -5,21 +5,25 @@
 
 // Robot Moves depends directly on robot status
 // robot status:
-//   0: Go to defense position 
+//   0: Go to defense position
 //   5: Manual mode => User send direct commands to robot
 //   9: Manual mode IceQueen => User send direct commands to robot
 void robotStrategy()
 {
-  max_speed = user_max_speed;  // default to max robot speed and accel
-  max_acceleration = user_max_accel;
+  //max_speed = user_max_speed;  // default to max robot speed and accel
+  //max_acceleration = user_max_accel;
 
   switch (robot_status) {
 
     case 5: // EVO manual mode
+      max_speed = user_target_speed;
+      max_acceleration = user_target_accel;
       setPosition_straight(user_target_x, user_target_y);
       break;
 
     case 9: // IceQueen manual mode
+      max_speed = user_target_speed;
+      max_acceleration = user_target_accel;
       position_M1 = (robotCoordX + robotCoordY) * X_AXIS_STEPS_PER_UNIT;
       position_M2 = (robotCoordX - robotCoordY) * Y_AXIS_STEPS_PER_UNIT;
       setPosition_straight(user_target_x, user_target_y);

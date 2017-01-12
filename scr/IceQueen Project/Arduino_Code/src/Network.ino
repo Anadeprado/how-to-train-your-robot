@@ -77,19 +77,19 @@ void packetRead()
           //   Serial.println(extractParamInt(pos));
           // }
 
-          if (extractParamInt(6) != 0xFFFF) // Check payload (as a quality control)
-          {
-            Serial.println("mma PACKET ERROR! No correct final payload");
-            readStatus = 0;
-            newPacket = 0;
-            return;
-          }
+          // if (extractParamInt(4) != 0xFFFF) // Check payload (as a quality control)
+          // {
+          //   Serial.println("mma PACKET ERROR! No correct final payload");
+          //   readStatus = 0;
+          //   newPacket = 0;
+          //   return;
+          // }
 
           // CHECK MAXIMUNS
           user_target_x = constrain(extractParamInt(10), 0, ROBOT_MAX_X);
           user_target_y = constrain(extractParamInt(8), 0, ROBOT_MAX_Y);
-          //payload = extractParamInt(6);
-          //payload = extractParamInt(4);
+          user_target_speed = constrain(extractParamInt(6), MIN_SPEED, MAX_SPEED);
+          user_target_accel = constrain(extractParamInt(4), MIN_ACCEL, MAX_ACCEL);
           robotCoordX = extractParamInt(2);
           robotCoordY = extractParamInt(0);
           // Recibido

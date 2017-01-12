@@ -12,8 +12,8 @@
 #define MAX_ACCEL 275           // Maximun motor acceleration in (steps/seg2)/1000. Max recommended value:280
 #define MAX_SPEED 32000         // Maximun speed in steps/seg. Max absolute value: 32767!!
 
-#define MIN_ACCEL 100
-#define MIN_SPEED 5000
+#define MIN_ACCEL 100//100
+#define MIN_SPEED 5000//5000
 #define SCURVE_LOW_SPEED 2500
 #define SCURVE_HIGH_SPEED 28000
 

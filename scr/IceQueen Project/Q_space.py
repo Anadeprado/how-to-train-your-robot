@@ -16,7 +16,6 @@ from random import random
 from random import choice
 
 
-
 # Función para detectar en qué estado nos encontramos
 #       Ejemplo:
 #           calculoEstado((0,0),(1,1),(1,1))
@@ -67,7 +66,7 @@ def elegirAccion(pos_R, estado, Q, epsilon):
     # 'accionesLegales' muestra opciones válidas en plan: [3,5,6]
     accionesLegales = calcularAccionesLegales(pos_R)
 
-    if epsilon > 0.8:
+    if epsilon > 0.7:
         accion = choice(accionesLegales)
 
     else:
@@ -181,14 +180,13 @@ def elegirAccionMEJOR(pos_R, estado, Q):
 
 # DEFINIR TABLA DE RECOMPENSAS Q
 def inicializaQ():
-    # Como IKERBOT sería...
-    # Q_iker = np.zeros((NUM_SEC_X, NUM_SEC_Y, TRAY_TOTALES, num_ACCIONES))
-    # ss = (1,1,0)
-    # print QQ_iker[ss[0],ss[1],ss[2],0]
+    #Si quiero una matriz llena de valores 'None'
+    # return np.full((num_ESTADOS, num_ACCIONES), None)
 
     return np.zeros((num_ESTADOS, num_ACCIONES)) #Array
 
 def borraQ(Q):
+    # return np.full_like(Q, None)
     return np.zeros_like(Q)
 
 # Máxima recompensa de un estado
@@ -209,7 +207,7 @@ def Entrena_Q_con_UNA_Experiencia(Q,experiencia, velAprendizaje, factorDesc):
     Oldv = Q[S, a]
 
     #Q-LEARNING:
-    if Oldv is None:
+    if Oldv is 0: #None:
         Q[S, a] = rr
     else:
         Q[S, a] = Oldv + velAprendizaje *(rr + factorDesc * Vst_1 - Oldv)

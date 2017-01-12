@@ -36,10 +36,10 @@ void setup()
   digitalWrite(A3,HIGH);  // Enable pullup
 
   Serial.begin(115200);   // ESP & serial connection
-  delay(5000);
+  delay(3000); //5000
 
-  //LED blink 5 times
-  for (uint8_t k = 0; k < 5; k++)
+  //LED blink 3 times
+  for (uint8_t k = 0; k < 3; k++)
   {
     digitalWrite(13, HIGH);
     delay(300);
@@ -47,7 +47,7 @@ void setup()
     delay(300);
   }
 
-  Serial.println("Initializing Wifi module...");
+  //Serial.println("Initializing Wifi module...");
   // ESP Wifi module initialization routine.
   // The Robot will generate it´s own wifi network JJROBOTS_xx
   // and listen external UDP messages...

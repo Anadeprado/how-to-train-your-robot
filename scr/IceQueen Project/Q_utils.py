@@ -20,6 +20,16 @@ from random import choice
 #-   FUNCIONES PARA NAVEGAR ENTRE ESTADOS Y TRAYECTORIAS ----------------
 #------------------------------------------------------------------------
 
+# Size of the PLAYING COURT ---> Rectangle margin
+#   ------------------------------------------> X
+#   |   mUP .-------------------.          |
+#   |       |                   |          |
+#   |       |                   |          |
+#   |       |                   |          |
+#   |       .-------------------. mDOWN    |
+#   |--------------------------------------
+#   Y
+
 # Update actual sector position function :
 #-----------------------------------------------
 def update_actual_sector_position(ix,iy,actual_sector):
@@ -33,6 +43,10 @@ def update_actual_sector_position(ix,iy,actual_sector):
         newXsector = (ix-mUP_X) // SEC_SIZ
         newYsector = (iy-mUP_Y) // SEC_SIZ
 
+        # Si el disco está en posición 700-710 --> sector X=6 no 7
+        if(newXsector == NUM_SEC_X):
+            newXsector = NUM_SEC_X-1
+
         #Si el sector ha cambiado, actualiza la variable y sennala nuevo sector
         if (actual_sector[0] is not newXsector) or (actual_sector[1] is not newYsector):
             actual_sector = (newXsector,newYsector)
@@ -43,6 +57,45 @@ def update_actual_sector_position(ix,iy,actual_sector):
 
     else:
         return 'C', (-1,-1) #Disco fuera
+
+def lanzamientoCompletoDisco():
+
+    croSectors = []
+
+    # Genero nueva posición inicial:
+    # El disco siempre empieza en borde derecho:
+    ix = mDOWN_X - 11
+    iy = randint(mUP_Y+2,mDOWN_Y-2)
+
+    # Genero nuevas velocidades iniciales:
+    vx = randint(-10,-5) # Random entre -10 y -1 : siempre avanza
+    vy = randint(-10,10) # Random entre -10 y 10
+
+    old_sector = (-10,-10)
+    #actual_sector = (-1,-1)
+
+    # Ejecuto trayectoria hasta que pelota esté en X = 0
+    while(old_sector[0] is not 0):
+
+        # Compruebo si se produce REBOTE y actualizo velocidades:
+        if (iy + vy)<= mUP_Y:
+            vy = -vy
+        elif (iy + vy)>= mDOWN_Y:
+            vy = -vy
+
+        # Si velocidad es constante -->
+        ix = ix + vx
+        iy = iy + vy
+
+        caso, actual_sector = update_actual_sector_position(
+                                ix,iy,old_sector)
+
+        if caso is 'A': #Nuevo sector
+            croSectors.append(actual_sector)
+            old_sector = actual_sector
+
+    return croSectors
+
 
 # Función para calcular la posición que tendria que tener el robot en mm para
 # estar en un sector concreto.
@@ -56,6 +109,9 @@ def calcRobotPos_in_mm(pos_R):
 # print("Posicion para sector (1,1): ")
 # print(calcRobotPos_in_mm((0,0)))
 
+# Función que devuelve el siguiente sector del Disco
+def PosDisco(croSectors,step):
+    return croSectors[step]
 
 # Función para calcular el nuevo sector del robot al realizar acción 'a'
 def siguientePosRobot(pos_R, a):
@@ -136,18 +192,6 @@ def detectarTray(pos_D0, pos_D1):
 # Función que devuelve un movimiento de disco aleatorio
 def movimientoDiscoAleatorio(pos_D0):
 
-# TRAYECTORIAS POSIBLES: 5 o 3 en los extremos
-#    .-----.-----.-----.
-#    |  1  |  2  |     |
-#    |  |  |/    |     |
-#    .--|--/-----.-----.    .-----.-----.-----.
-#    | D D---- 3 |     |    |  1  |  2  |     |
-#    | D D\|     |     |    |  |  |/    |     |
-#    .--|--\-----.-----.    .--|--/-----.-----.
-#    |  |  |\    |     |    | D D---- 3 |     |
-#    |  5  | 4   |     |    | D D |     |     |
-#    .-----.-----.-----.    .-----.-----.-----.
-
 # TRAYECTORIAS POSIBLES DISCO: 5 o 3 en los extremos.
 #    .-----.-----.-----.    .-----.-----.-----.
 #    |     | 2 \ |  1  |    |     | 2 \ |  1  |
@@ -195,10 +239,13 @@ def distancia(A, B):
 def recompensaInmediata(pos_R, pos_D):  #(S, a, S_1)
 
     dist = distancia(pos_R, pos_D)
+
     if dist == 0:
         rr = 10 #Si atrapó el disco
     else:
         rr = 1/dist
+        #if pos_D[0]<pos_R[0]: #Si el disco ha pasado al robot...
+        #    rr = -rr
 
     return rr
 
@@ -335,44 +382,64 @@ def setMessageUDP(target,robotCoord, typo='a'):
         dato[5] = (target_X>>8)&0xFF
         dato[6] = target_X&0xFF
 
-        if(typo is 'a'):
-            # robotPos_X (high byte, low byte)
-            dato[7] = (robotCoordY>>8)&0xFF
-            dato[8] = robotCoordY&0xFF
-            # robotPos_Y (high byte, low byte)
-            dato[9] = (robotCoordX>>8)&0xFF
-            dato[10] = robotCoordX&0xFF
+        #define MAX_ACCEL 275
+        #define MAX_SPEED 32000
+        #define MIN_ACCEL 100
+        #define MIN_SPEED 5000
+        accel = 150     #100
+        sppeed = 10000 #5000
 
-            # Payload
-            dato[11] = (0xFFFF>>8)&0xFF
-            dato[12] = 0xFFFF&0xFF
-            # Otra vez Payload
-            dato[13] = (0xFFFF>>8)&0xFF
-            dato[14] = 0xFFFF&0xFF
+        # robot_speed (high byte, low byte)
+        dato[7] = (sppeed>>8)&0xFF
+        dato[8] = sppeed&0xFF
+        # robot_accel (high byte, low byte)
+        dato[9] = (accel>>8)&0xFF
+        dato[10] = accel&0xFF
 
-        else:
+        # robotPos_X (high byte, low byte)
+        dato[11] = (robotCoordY>>8)&0xFF
+        dato[12] = robotCoordY&0xFF
+        # robotPos_Y (high byte, low byte)
+        dato[13] = (robotCoordX>>8)&0xFF
+        dato[14] = robotCoordX&0xFF
 
-            #define MAX_ACCEL 275
-            #define MAX_SPEED 32000
-            #define MIN_ACCEL 100
-            #define MIN_SPEED 5000
-            accel = 100
-            sppeed = 10000
-
-            # robot_speed (high byte, low byte)
-            dato[7] = (sppeed>>8)&0xFF
-            dato[8] = sppeed&0xFF
-            # robot_accel (high byte, low byte)
-            dato[9] = (accel>>8)&0xFF
-            dato[10] = accel&0xFF
-
-            # robotPos_X (high byte, low byte)
-            dato[7] = (robotCoordY>>8)&0xFF
-            dato[8] = robotCoordY&0xFF
-            # robotPos_Y (high byte, low byte)
-            dato[9] = (robotCoordX>>8)&0xFF
-            dato[10] = robotCoordX&0xFF
-
+        # if(typo is 'a'):
+        #     # robotPos_X (high byte, low byte)
+        #     dato[7] = (robotCoordY>>8)&0xFF
+        #     dato[8] = robotCoordY&0xFF
+        #     # robotPos_Y (high byte, low byte)
+        #     dato[9] = (robotCoordX>>8)&0xFF
+        #     dato[10] = robotCoordX&0xFF
+        #
+        #     # Payload
+        #     dato[11] = (0xFFFF>>8)&0xFF
+        #     dato[12] = 0xFFFF&0xFF
+        #     # Otra vez Payload
+        #     dato[13] = (0xFFFF>>8)&0xFF
+        #     dato[14] = 0xFFFF&0xFF
+        #
+        # else:
+        #
+        #     #define MAX_ACCEL 275
+        #     #define MAX_SPEED 32000
+        #     #define MIN_ACCEL 100
+        #     #define MIN_SPEED 5000
+        #     accel = 100
+        #     sppeed = 10000
+        #
+        #     # robot_speed (high byte, low byte)
+        #     dato[7] = (sppeed>>8)&0xFF
+        #     dato[8] = sppeed&0xFF
+        #     # robot_accel (high byte, low byte)
+        #     dato[9] = (accel>>8)&0xFF
+        #     dato[10] = accel&0xFF
+        #
+        #     # robotPos_X (high byte, low byte)
+        #     dato[7] = (robotCoordY>>8)&0xFF
+        #     dato[8] = robotCoordY&0xFF
+        #     # robotPos_Y (high byte, low byte)
+        #     dato[9] = (robotCoordX>>8)&0xFF
+        #     dato[10] = robotCoordX&0xFF
 
         #print(''.join(chr(x) for x in dato))
         #s.send(''.join(chr(x) for x in dato))
@@ -390,30 +457,16 @@ def setMessageUDP(target,robotCoord, typo='a'):
 #------------------------------------------------------------------------
 import pickle  # módulo para la lectura/escritura de datos
 
-def guardarExperiencias(experiencias, nombre_archivo = 'd_experiencias.dat'):
+def saveData(dataa, file_name = 'dataa.dat'):
 
-    archivo = open(nombre_archivo, 'wb') # Abre archivo binario para escribir
-    pickle.dump(experiencias, archivo)   # Escribe experiencias en archivo
-    archivo.close                        # Cierra archivo
+    filee = open(file_name, 'wb') # Abre archivo binario para escribir
+    pickle.dump(dataa, filee)     # Escribe en archivo
+    filee.close                   # Cierra archivo
 
-def leerExperiencias(nombre_archivo = 'd_experiencias.dat'):
+def readData(file_name = 'dataa.dat'):
 
-    archivo = open(nombre_archivo, 'rb') # Abre archivo binario para escribir
-    lectura = pickle.load(archivo)       # Lee experiencias de archivo
-    archivo.close                        # Cierra archivo
+    archivo = open(file_name, 'rb') # Abre archivo binario para escribir
+    dataa = pickle.load(archivo)    # Lee desde archivo
+    archivo.close                   # Cierra archivo
 
-    return lectura
-
-def guardarQ(Qqq, nombre_archivo = 'd_Qspace.dat'):
-
-    archivo = open(nombre_archivo, 'wb') # Abre archivo binario para escribir
-    pickle.dump(Qqq, archivo)   # Escribe Q ya entrenado en archivo
-    archivo.close                        # Cierra archivo
-
-def leerQ(nombre_archivo = 'd_Qspace.dat'):
-
-    archivo = open(nombre_archivo, 'rb') # Abre archivo binario para escribir
-    lectura = pickle.load(archivo)       # Lee Q ya entrenado de archivo
-    archivo.close                        # Cierra archivo
-
-    return lectura
+    return dataa                    # Devuelve lectura

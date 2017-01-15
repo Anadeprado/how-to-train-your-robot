@@ -66,7 +66,7 @@ def elegirAccion(pos_R, estado, Q, epsilon):
     # 'accionesLegales' muestra opciones válidas en plan: [3,5,6]
     accionesLegales = calcularAccionesLegales(pos_R)
 
-    if epsilon > 0.7:
+    if epsilon > 0.85:
         accion = choice(accionesLegales)
 
     else:

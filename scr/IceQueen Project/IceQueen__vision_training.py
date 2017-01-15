@@ -7,8 +7,8 @@
 #   Author: Anita de Prado
 #   Hardware: Arduino Mega2560 + JJROBOTS brain shield v3 (devia)
 #
-#   Date: 11/01/2017
-#   Version: 1.00
+#   Date: 15/01/2017
+#   Version: 1.2
 #
 # License: Open Software GPL License
 ###########################################################################
@@ -26,6 +26,9 @@ import imutils
 import cv2
 import socket
 
+import time
+
+from random import randint
 from Const import *
 from Q_utils import *
 from Q_space import *
@@ -60,9 +63,10 @@ rr = 0      # Recompensa
 #   _Discount factor = factor de descuento (gamma)
 #       (0 = solo importan refuerzos inmediatos, 1 = solo a largo plazo)
 #
-velAprendizaje = 0.5  # alpha  0.3
-factorDescuento = 0.7 # gamma  0.8
-num_veces = 6
+velAprendizaje = 0.3  # alpha  0.3
+factorDescuento = 0.6 # gamma  0.8
+num_veces = 4
+epsilon_v = 99
 
 # ----------------------------------------------
 drawLines = True
@@ -77,7 +81,7 @@ HSV_values = readData('d_valuesHSV.dat')
 print("-OK")
 
 print("...Cargando espacio Q ya entrenado")
-Q = readData('d_Qspace.dat')
+Q = readData('d_Qspace_real.dat')
 print("-OK")
 
 
@@ -106,9 +110,6 @@ camera = cv2.VideoCapture(1)
 if(camera.isOpened()==False):
     print("¡No hay camara conectada!")
     exitIceQueen(camera, s)
-
-
-
 
 
 #----------------------------------------------------------------------
@@ -142,6 +143,12 @@ elif(respuesta is '2'):
     HSV_values = greenLower,greenUpper,blueLower,blueUpper
     saveData(HSV_values,'d_valuesHSV.dat')
 
+# elif(respuesta is '1'):
+#     # Mostramos visión
+#     #print 'Iniciamos vista...'
+#     cv2.namedWindow('IceQueen Vision')
+#     cv2.waitKey(1)
+
 
 # Keep looping
 while True:
@@ -166,7 +173,7 @@ while True:
 
     elif (respuesta is 'G') or (respuesta is 'g'):
         print 'Salvando Q...'
-        saveData(Q, 'd_Qspace.dat')
+        saveData(Q, 'd_Qspace_real.dat')
 
     elif (respuesta is 'R') or (respuesta is 'r'):
         print 'Inicializamos Q...'
@@ -174,8 +181,50 @@ while True:
 
     elif(respuesta is 'E') or (respuesta is 'e'):
 
+        print 'Inicializamos epsilon y experiencias...'
+        experiencias = []
+
+        # Calculamos epsilon variable al inicio:
+        porcentajeEntrenamiento = calculaNivelEntrenamientoQ(Q, False)
+        no_entrenadas = 100-porcentajeEntrenamiento
+        epsilon_v = no_entrenadas/100
+
+        # Robot a POSICIÓN INICIAL
+        # El robot puede empezar en un sector aleatoria dentro de sus límites
+        target_ini_x= randint(rxMin,rxMax)
+        target_ini_y= randint(ryMin,ryMax)
+        target_sector_R = (target_ini_x,target_ini_y)
+        target_mm_R = calcRobotPos_in_mm(target_sector_R)
+        print 'Sector inicial para robot: ',target_sector_R
+
+
+        # Robot a POSICIÓN INICIAL
+        colocado = False
+        while(colocado == False):
+            print '¿Está el robot en su posición inicial? [S = si. N = no]'
+            time.sleep(.300)
+            while(1):
+                # Mostrando detección de disco y robot:
+                center_DISC, center_ROBOT, frame = vision_Detection(camera, HSV_values)
+                if(drawLines==True):
+                    draw_margin_and_center(frame)
+                    draw_sector_lines(frame)
+                cv2.imshow("IceQueen Vision", frame)
+
+                key = cv2.waitKey(10) & 0xFF
+                if (key== ord("n")):
+                    if(center_ROBOT is not None):
+                        # Enviamos ordenes al Robot para que alcance la posición inicial:
+                        sendToRobot(s,target_mm_R,center_ROBOT,'a',1) #very slow
+                    break
+                elif (key== ord("s")):
+                    colocado = True
+                    break
+
+        # Disco a POSICIÓN INICIAL
         print 'Coloca el disco en la posición inicial y pulsa una tecla. OK?'
         ready = -1
+        time.sleep(.300)
         while(ready is -1): #not key pressed
             # Mostrando detección de disco y robot:
             center_DISC, center_ROBOT, frame = vision_Detection(camera, HSV_values)
@@ -184,7 +233,8 @@ while True:
                 draw_sector_lines(frame)
             cv2.imshow("IceQueen Vision", frame)
 
-            ready = cv2.waitKey(1)
+            ready = cv2.waitKey(10)
+
 
         #Comprobamos que se detecta tanto disco como robot:
         center_DISC, center_ROBOT, frame = vision_Detection(camera, HSV_values)
@@ -192,28 +242,33 @@ while True:
             print '(!) Episodio termina porque algo falla con la detección dentro de la mesa'
             print '\n center_ROBOT = ', center_ROBOT
             print ' center_DISC  = ', center_DISC
+            end_episodio = True
 
         else:
-            #print 'Inicializamos experiencias...'
-            experiencias = []
-            print ("\n\nPosiciones iniciales fijadas.....")
+
+            #print ("\n\nPosiciones iniciales fijadas.....")
             _, pos_D0 = update_actual_sector_position(
                                     center_DISC[0],center_DISC[1],pos_D0)
             _, pos_R = update_actual_sector_position(
                                     center_ROBOT[0],center_ROBOT[1],pos_R)
 
+
             print ("""
-            ====================================================
-            -- TRAINING ICE-QUEEN ------------------------------
-            ====================================================
-            \t S - Detener Episodio (Lanzamiento)
-            \n
-            \t X - ¡Muy bien robot! :) Recompensa positiva
-            \t Z - ¡Muy mal robot!  :( Recompensa negativa
-            \n
-            \t Q - Salir
-            \n
+    ====================================================
+    -- TRAINING ICE-QUEEN ------------------------------
+    ====================================================
+    \t S - Detener Episodio (Lanzamiento)
+    \n
+    \t 1 - ¡PERFECTO!       :) Recompensa muy positiva
+    \t 2 - Bien             :) Recompensa positiva
+    \t 3 - Regular...
+    \t 4 - Mal              :( Recompensa negativa
+    \t 5 - ¡Muy MAL!        :( Recompensa muy negativa
+    \n
+    \t Q - Salir
+    \n
             """)
+
 
             first_action = True
             end_episodio = False
@@ -247,7 +302,7 @@ while True:
             draw_margin_and_center(frame)
             draw_sector_lines(frame)
 
-        #--DISC SECTOR POSITION CONTROL ------------------------------------------------
+        #--DISC SECTOR POSITION CONTROL ----------------------------------------
         if(center_DISC is not None): #Si ha detectado un disco...
 
             pos_D0 = pos_D1
@@ -284,17 +339,17 @@ while True:
 
             S_1 = calculoEstado(pos_D0, pos_D1, pos_R)
 
-            # Compruebo si se termina Episodio:
-            if (pos_D1[0]==0):
-                #Disco llega al borde izquierdo
-                if( 0 < pos_D1[1] < (NUM_SEC_Y-1)):
-                    rr = -1
-                end_episodio = True
-
-            elif distancia(pos_R,pos_D1)==0:
-                 print 'Disco chocó contra robot en S_1'
-                 end_episodio = True
-                 rr = 5
+            # # Compruebo si se termina Episodio:
+            # if (pos_D1[0]==0):
+            #     #Disco llega al borde izquierdo
+            #     if( 0 < pos_D1[1] < (NUM_SEC_Y-1)):
+            #         rr = -1
+            #     end_episodio = True
+            #
+            # elif distancia(pos_R,pos_D1)==0:
+            #      print 'Disco chocó contra robot en S_1'
+            #      end_episodio = True
+            #      rr = 5
 
 
             # Guardar experiencia si no es la primera vez
@@ -302,29 +357,25 @@ while True:
                 experiencia = [S,a,rr,S_1]
                 experiencias.append(experiencia)
 
-            a = elegirAccionMEJOR(pos_R, S, Q)
+            a = elegirAccionAleatoria(pos_R)
+            #a = elegirAccionPEOR(pos_R=)
+            #a = elegirAccion(pos_R, S, Q, epsilon_v)
 
             #Si se debe mover...
             if (a is not 8): #a = 8 cuando la acción es no moverse
                 target_sector_R = siguientePosRobot(pos_R, a)
-                tar_mm_R = calcRobotPos_in_mm(target_sector_R)
+                target_mm_R = calcRobotPos_in_mm(target_sector_R)
 
-                # Enviamos ordenes al Robot:
-                dataa = bytearray(15)
-                dataa = setMessageUDP(tar_mm_R,center_ROBOT,'a')
-
-                try:
-                    s.send(''.join(chr(x) for x in dataa))
-                except Exception as e:
-                    print("Something's wrong with the sending...")
+                # Enviamos ordenes al Robot para que alcance la posición:
+                sendToRobot(s,target_mm_R,center_ROBOT,'a',2) #slow
 
                 pos_R = target_sector_R
 
 
             #RECOMPENSA INMEDIATA
             # Calculo recompensa --> rr
-            #rr = recompensaInmediata(pos_R, pos_D1)
-            rr = 0.00001
+            rr = recompensaInmediata(pos_R, pos_D1)
+            #rr = 0.00001 #De esta forma cuenta como "entrenado"
 
             pos_D0 = pos_D1
             S = S_1
@@ -342,10 +393,10 @@ while True:
         #     #Si se debe mover...
         #     if (pos_R[0] is not 0):
         #         target_sector_R = (0,pos_R[1])
-        #         tar_mm_R = calcRobotPos_in_mm(target_sector_R)
+        #         target_mm_R = calcRobotPos_in_mm(target_sector_R)
         #
         #         dataa = bytearray(15)
-        #         dataa = setMessageUDP(tar_mm_R,center_ROBOT,'a')
+        #         dataa = setMessageUDP(target_mm_R,center_ROBOT,'t') #t = training slow
         #
         #         try:
         #             s.send(''.join(chr(x) for x in dataa))
@@ -356,39 +407,66 @@ while True:
         # show the frame to our screen
         cv2.imshow("IceQueen Vision", frame)
 
-        if(disc_Out==True) or (center_ROBOT is None) or (center_DISC is None):
-            cv2.destroyAllWindows()
-            print '(!) Episodio termina porque algo falla con la detección dentro de la mesa'
-            print '\n center_ROBOT = ', center_ROBOT
-            print ' center_DISC  = ', center_DISC
-            print ' disc_Out = ', disc_Out
-            print '\n'
-            end_episodio = True
-
+        # ¿Has pulsado una tecla?
         key = cv2.waitKey(1) & 0xFF
+
         if (key == 27)or(key == ord("q")): #Pulsando Q/Esc para salir
             exitIceQueen(camera, s)
             break
-        elif (key == ord("s")): #Detener episodio manualmente
+
+        elif(disc_Out==True) or (key == ord("s")): #or (center_ROBOT is None) or (center_DISC is None):
+
+            if(disc_Out==True):
+                print '(!) Episodio termina porque algo falla con la detección dentro de la mesa'
+                print '\n center_ROBOT = ', center_ROBOT
+                print ' center_DISC  = ', center_DISC
+                print ' disc_Out = ', disc_Out
+                print '\n'
+            else:
+                print 'Lanzamiento detenido'
+
             end_episodio = True
 
-        elif (key == ord("x")): #Detener episodio pero recompensando [+] :)
+            print'¿Quieres recompensar de todas formas? [S = si]'
+            key = cv2.waitKey(0) & 0xFF
+            respuesta = chr(key)
 
-            print '¡BRAVO ROBOT! :)'
-            experiencias[-1][2] = 10 #Actualizo última recompensa:
-            #   experiencias = [[S,a,rr,S_1], ..... , [S,a,***,S_1]] <-- [-1][2]
-            end_episodio = True
+            if(respuesta == 'S') or (respuesta == 's'):
+                # print'''
+                # \t 1 - ¡PERFeCTO!       :) Recompensa muy positiva
+                # \t 2 - Bien             :) Recompensa positiva
+                # \t 3 - Regular...
+                # \t 4 - Mal              :( Recompensa negativa
+                # \t 5 - ¡Muy MAL!        :( Recompensa muy negativa
+                # '''
+                # respuesta = raw_input('recompensa >> ')
+                print'recompensa >> '
+                key = cv2.waitKey(0) & 0xFF
+                respuesta = chr(key)
+                _, experiencias = actualizarUltimaEx(experiencias, respuesta)
+            else:
+                # Borro experiencias de episodio
+                experiencias = []
+                #salgo del bucle sin entrenar Q
+                break
 
-        elif (key == ord("z")): #Detener episodio pero recompensando [-] :(
 
-            print 'Muy mal... :('
-            experiencias[-1][2] = -5 #Actualizo última recompensa:
-            #   experiencias = [[S,a,rr,S_1], ..... , [S,a,***,S_1]] <-- [-1][2]
-            end_episodio = True
+        elif (key == ord('1')): #Detener episodio pero recompensando [+20] :)
+            end_episodio, experiencias = actualizarUltimaEx(experiencias, '1')
+        elif (key == ord('2')): #Detener episodio pero recompensando [+10] :)
+            end_episodio, experiencias = actualizarUltimaEx(experiencias, '2')
+        elif (key == ord('3')): #Detener episodio pero recompensando [+1] ~~
+            end_episodio, experiencias = actualizarUltimaEx(experiencias, '3')
+        elif (key == ord('4')): #Detener episodio pero recompensando [-5] :(
+            end_episodio, experiencias = actualizarUltimaEx(experiencias, '4')
+        elif (key == ord('5')): #Detener episodio pero recompensando [-10] :(
+            end_episodio, experiencias = actualizarUltimaEx(experiencias, '5')
+
 
         if(end_episodio == True):
             # Si el episodio se ha acabado: entreno Q con las experiencias
-            print '\n Experiencias en este lanzamiento = ', experiencias
+            #print '\n Experiencias en este lanzamiento = ', experiencias
+
             Q = Entrena_Q_con_Experiencias(Q, experiencias, velAprendizaje, factorDescuento, num_veces)
 
             # Borro experiencias de episodio
@@ -396,6 +474,9 @@ while True:
 
             # Calculo porcentaje entrenamiento y muestro en pantalla
             porcentajeEntrenamiento = calculaNivelEntrenamientoQ(Q, True)
+
+            no_entrenadas = 100-porcentajeEntrenamiento
+            epsilon_v = no_entrenadas/100
 
 
 #----------------------------------------------------------------------

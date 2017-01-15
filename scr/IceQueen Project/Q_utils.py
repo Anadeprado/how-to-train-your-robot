@@ -355,7 +355,17 @@ def colored_sector(imggg, actual_sec):
 #----------------------------------------------------------------------
 #---    UPD COMMUNICATIONS    -----------------------------------------
 #----------------------------------------------------------------------
-def setMessageUDP(target,robotCoord, typo='a'):
+def sendToRobot(socket,target,robotCoord, typo='a', vel=3):
+
+    dataa = bytearray(15)
+    dataa = setMessageUDP(target,robotCoord,typo,vel)
+
+    try:
+        socket.send(''.join(chr(x) for x in dataa))
+    except Exception as e:
+        print("Something's wrong with the sending...")
+
+def setMessageUDP(target,robotCoord, typo='a', vel=3):
 
         target_X = target[0]
         target_Y = target[1]
@@ -386,8 +396,15 @@ def setMessageUDP(target,robotCoord, typo='a'):
         #define MAX_SPEED 32000
         #define MIN_ACCEL 100
         #define MIN_SPEED 5000
-        accel = 150     #100
-        sppeed = 10000 #5000
+        if(vel is 3):       #fast playing
+            accel = ACCEL_FAST  #150
+            sppeed = SPEED_FAST #20000
+        elif(vel is 2):     #normal training
+            accel = ACCEL_SLOW  #130
+            sppeed = SPEED_SLOW #10000
+        else:               #very slow mode
+            accel = ACCEL_SLOW  #100
+            sppeed = MIN_SPEED  #5000
 
         # robot_speed (high byte, low byte)
         dato[7] = (sppeed>>8)&0xFF
@@ -402,44 +419,6 @@ def setMessageUDP(target,robotCoord, typo='a'):
         # robotPos_Y (high byte, low byte)
         dato[13] = (robotCoordX>>8)&0xFF
         dato[14] = robotCoordX&0xFF
-
-        # if(typo is 'a'):
-        #     # robotPos_X (high byte, low byte)
-        #     dato[7] = (robotCoordY>>8)&0xFF
-        #     dato[8] = robotCoordY&0xFF
-        #     # robotPos_Y (high byte, low byte)
-        #     dato[9] = (robotCoordX>>8)&0xFF
-        #     dato[10] = robotCoordX&0xFF
-        #
-        #     # Payload
-        #     dato[11] = (0xFFFF>>8)&0xFF
-        #     dato[12] = 0xFFFF&0xFF
-        #     # Otra vez Payload
-        #     dato[13] = (0xFFFF>>8)&0xFF
-        #     dato[14] = 0xFFFF&0xFF
-        #
-        # else:
-        #
-        #     #define MAX_ACCEL 275
-        #     #define MAX_SPEED 32000
-        #     #define MIN_ACCEL 100
-        #     #define MIN_SPEED 5000
-        #     accel = 100
-        #     sppeed = 10000
-        #
-        #     # robot_speed (high byte, low byte)
-        #     dato[7] = (sppeed>>8)&0xFF
-        #     dato[8] = sppeed&0xFF
-        #     # robot_accel (high byte, low byte)
-        #     dato[9] = (accel>>8)&0xFF
-        #     dato[10] = accel&0xFF
-        #
-        #     # robotPos_X (high byte, low byte)
-        #     dato[7] = (robotCoordY>>8)&0xFF
-        #     dato[8] = robotCoordY&0xFF
-        #     # robotPos_Y (high byte, low byte)
-        #     dato[9] = (robotCoordX>>8)&0xFF
-        #     dato[10] = robotCoordX&0xFF
 
         #print(''.join(chr(x) for x in dato))
         #s.send(''.join(chr(x) for x in dato))
@@ -470,3 +449,44 @@ def readData(file_name = 'dataa.dat'):
     archivo.close                   # Cierra archivo
 
     return dataa                    # Devuelve lectura
+
+
+# Actualizar última experiencia
+#   experiencias[-1][2] = valor nuevo
+def actualizarUltimaEx(experiencias, res):
+
+    end_episodio = True
+
+    if(experiencias == []):
+        return end_episodio, experiencias
+
+    # print'''
+    #     \t 1 - ¡PERFECTO!       :) Recompensa muy positiva
+    #     \t 2 - Bien             :) Recompensa positiva
+    #     \t 3 - Regular...
+    #     \t 4 - Mal              :( Recompensa negativa
+    #     \t 5 - ¡Muy MAL!        :( Recompensa muy negativa
+    # '''
+    # res = raw_input('>> ')
+
+    if (res == '1'): #Recompensando [+20] :)
+        print '¡BRAVO ROBOT! :)'
+        experiencias[-1][2] = 10
+
+    elif (res == '2'): #Recompensando [+10] :)
+        print '¡Muy bien robot! :)'
+        experiencias[-1][2] = 5
+
+    elif (res == '3'): #Recompensando [+1] ~~
+        print 'No está mal, pero sigue intentándolo... :/'
+        experiencias[-1][2] = 1
+
+    elif (res == '4'): #Recompensando [-5] :()
+        print 'Mal robot :('
+        experiencias[-1][2] = -5
+
+    elif (res == '5'): #Recompensando [-5] :()
+        print '¡Muy MAL! :('
+        experiencias[-1][2] = -10
+
+    return end_episodio, experiencias

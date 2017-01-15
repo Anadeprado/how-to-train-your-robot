@@ -7,8 +7,8 @@
 #   Author: Anita de Prado
 #   Hardware: Arduino Mega2560 + JJROBOTS brain shield v3 (devia)
 #
-#   Date: 11/01/2017
-#   Version: 1.00
+#   Date: 15/01/2017
+#   Version: 1.2
 #
 # License: Open Software GPL License
 ###########################################################################
@@ -95,6 +95,7 @@ print ("""
 ====================================================
 \t 1 - PLAY
 \t 2 - Calibrar los valores HSV
+\t 3 - Utilizar Q del entrenamiento real
 \n\t Q - Salir
 \n
 """)
@@ -115,6 +116,11 @@ elif(respuesta is '2'):
 
     HSV_values = greenLower,greenUpper,blueLower,blueUpper
     saveData(HSV_values,'d_valuesHSV.dat')
+
+elif(respuesta is '3'):
+    print("...Cargando espacio Q ya entrenado manualmente")
+    Q = readData('d_Qspace_real.dat')
+    print("-OK")
 
 print ("""\n\n\n
 ----------------------------------------------------
@@ -184,16 +190,10 @@ while True:
         #Si se debe mover...
         if (a is not 8): #a = 8 cuando la acción es no moverse
             target_sector_R = siguientePosRobot(pos_R, a)
-            tar_mm_R = calcRobotPos_in_mm(target_sector_R)
+            target_mm_R = calcRobotPos_in_mm(target_sector_R)
 
-            # Enviamos ordenes al Robot:
-            dataa = bytearray(15)
-            dataa = setMessageUDP(tar_mm_R,center_ROBOT,'a')
-
-            try:
-                s.send(''.join(chr(x) for x in dataa))
-            except Exception as e:
-                print("Something's wrong with the sending...")
+            # Enviamos ordenes al Robot para que alcance la posición inicial:
+            sendToRobot(s,target_mm_R,center_ROBOT,'a') #fast
 
     # Por comodidad, si detecta el disco fuera del tablero,
     # enviamos ordenes al Robot para que vuelva hacia el lado de la portería:
@@ -204,15 +204,10 @@ while True:
         #Si se debe mover...
         if (pos_R[0] is not 0):
             target_sector_R = (0,pos_R[1])
-            tar_mm_R = calcRobotPos_in_mm(target_sector_R)
+            target_mm_R = calcRobotPos_in_mm(target_sector_R)
 
-            dataa = bytearray(15)
-            dataa = setMessageUDP(tar_mm_R,center_ROBOT,'a')
-
-            try:
-                s.send(''.join(chr(x) for x in dataa))
-            except Exception as e:
-                print("Something's wrong with the sending...")
+            # Enviamos ordenes al Robot para que alcance la posición inicial:
+            sendToRobot(s,target_mm_R,center_ROBOT,'a',2) #slow
 
 
 

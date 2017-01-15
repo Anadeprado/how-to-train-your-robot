@@ -7,6 +7,19 @@
 #------------------------------------------------------------------------
 #------------------------------------------------------------------------
 
+# Velocidad y aceleración de los motores paso a paso.
+#   SLOW : durante el entrenamiento
+#   FAST : para jugar
+ACCEL_SLOW = 100     #100 - 150*
+SPEED_SLOW = 10000   #5000 - 20000
+ACCEL_FAST = 130
+SPEED_FAST = 16000
+    #define MAX_ACCEL 275
+    #define MAX_SPEED 32000
+    #define MIN_ACCEL 100
+    #define MIN_SPEED 5000
+MIN_SPEED = 6000
+
 
 # Tamaño de pantalla 800x600 para que los pixeles coincidan con mm.
 # El tamaño original es de 640x480. Después de hacer resize(width=800) que

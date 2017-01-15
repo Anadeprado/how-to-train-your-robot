@@ -7,8 +7,8 @@
 #   Author: Anita de Prado
 #   Hardware: Arduino Mega2560 + JJROBOTS brain shield v3 (devia)
 #
-#   Date: 11/01/2017
-#   Version: 1.00
+#   Date: 15/01/2017
+#   Version: 1.2
 #
 # License: Open Software GPL License
 ####################################################################
@@ -22,8 +22,8 @@ import matplotlib.pyplot as plt
 
 # Plot result
 plt.figure('IceQueen Q-Learning')
-plt.xlabel('Valores de x') # etiqueta eje x
-plt.ylabel('Valores de y') # etiqueta eje y
+plt.xlabel('Numero de lanzamiento') # etiqueta eje x
+plt.ylabel('Sumatorio de exitos') # etiqueta eje y
 
 from Q_utils import *
 from Q_space import *
@@ -417,6 +417,10 @@ while(1):
         pps = (float(_num_exitos)/bb)*100
         print 'Porcentaje exitos: ', pps
 
+
+        plt.figure('IceQueen Q-Learning')
+        plt.xlabel('Numero de lanzamiento') # etiqueta eje x
+        plt.ylabel('Sumatorio de exitos') # etiqueta eje y
         plt.plot(plotX, plotY, 'ro', label='Frecuencia de exito')
         plt.legend()
         plt.show()
@@ -497,6 +501,9 @@ while(1):
         pps = (float(_num_exitos)/bb)*100
         print 'Porcentaje exitos: ', pps
 
+        plt.figure('IceQueen Q-Learning')
+        plt.xlabel('Numero de lanzamiento') # etiqueta eje x
+        plt.ylabel('Sumatorio de exitos') # etiqueta eje y
         #plt.plot(plot_final_X, plot_final_Y, 'ro', label='Frecuencia de exito')
         plt.plot(plot_final_X, plot_final_Y, 'ro', label='Frecuencia de exito jugando')
         plt.legend()

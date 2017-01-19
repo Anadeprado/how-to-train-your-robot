@@ -78,7 +78,7 @@ def calibrate_HSV(camera, colorLower=(0,0,0), colorUpper=(179,255,255), nameColo
         #TAMAÑO pantalla después de resize: 640x480 --> 800x600
         frame = imutils.resize(frame_original, width=FRAME_X)
         blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)  #frame --> blurred
 
         #converting to HSV
         hsv = cv2.cvtColor(frame,cv2.COLOR_BGR2HSV)
@@ -127,7 +127,7 @@ def vision_Detection(camera, HSV_values, detectBLUE=True, detectGREEN=True):
     #TAMAÑO pantalla después de resize: 640x480 --> 800x600
     frame = imutils.resize(frame_original, width=FRAME_X)
     blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #frame --> blurred
 
     # Init detect positions
     center_DISC = None
@@ -144,8 +144,8 @@ def vision_Detection(camera, HSV_values, detectBLUE=True, detectGREEN=True):
         mask_blue = cv2.dilate(mask_blue, None, iterations=2)
         #cv2.imshow("BlueMask", mask_blue)
 
-        # find contours in the mask_green and initialize the current
-        # (x, y) center of the disc
+        # find contours in the mask_blue and initialize the current
+        # (x, y) center of the robot
         cnts = cv2.findContours(mask_blue.copy(), cv2.RETR_EXTERNAL,
             cv2.CHAIN_APPROX_SIMPLE)[-2]
 
@@ -172,11 +172,11 @@ def vision_Detection(camera, HSV_values, detectBLUE=True, detectGREEN=True):
 
                 # show blue Center:
                 cv2.putText(frame, "ROBOT:",
-                            (100, FRAME_Y - 50), cv2.FONT_HERSHEY_SIMPLEX,
-                            0.70, (232,175,104), 1)
+                            (100, FRAME_Y - 40), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.70, (255, 0, 0), 1)  #(232,175,104)
                 cv2.putText(frame, "X: {}, Y: {}".format(center_ROBOT[0],center_ROBOT[1]),
-                            (100, FRAME_Y - 30), cv2.FONT_HERSHEY_SIMPLEX,
-                            0.70, (232,175,104), 1)
+                            (100, FRAME_Y - 20), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.70, (255, 0, 0), 1) #(232,175,104)
 
     #--GREEN------------------------------------------------------------
     if(detectGREEN):
@@ -216,10 +216,10 @@ def vision_Detection(camera, HSV_values, detectBLUE=True, detectGREEN=True):
 
                 # show Center:
                 cv2.putText(frame, "DISC:",
-                            (400, FRAME_Y - 50), cv2.FONT_HERSHEY_SIMPLEX,
-                            0.70, (0, 100, 255), 1)
+                            (600, FRAME_Y - 40), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.70, (0, 10, 0), 1)
                 cv2.putText(frame, "X: {}, Y: {}".format(center_DISC[0],center_DISC[1]),
-                            (400, FRAME_Y - 30), cv2.FONT_HERSHEY_SIMPLEX,
-                            0.70, (0, 100, 255), 1)
+                            (600, FRAME_Y - 20), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.70, (0, 10, 0), 1)
 
     return center_DISC, center_ROBOT, frame

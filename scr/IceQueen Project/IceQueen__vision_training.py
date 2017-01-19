@@ -7,8 +7,8 @@
 #   Author: Anita de Prado
 #   Hardware: Arduino Mega2560 + JJROBOTS brain shield v3 (devia)
 #
-#   Date: 15/01/2017
-#   Version: 1.2
+#   Date: 18/01/2017
+#   Version: 2
 #
 # License: Open Software GPL License
 ###########################################################################
@@ -50,7 +50,7 @@ disc_Out = False
 #  _Experiencia = (estado, acción, recompensa, estado siguiente)
 #       < S, a, r, S+1>
 #
-experiencias = []
+experiences = []
 Q = inicializaQ()
 S = 0       # Estado actual
 S_1 = 0     # Estado siguiente
@@ -65,7 +65,7 @@ rr = 0      # Recompensa
 #
 velAprendizaje = 0.3  # alpha  0.3
 factorDescuento = 0.6 # gamma  0.8
-num_veces = 4
+num_veces = 5
 epsilon_v = 99
 
 # ----------------------------------------------
@@ -82,6 +82,11 @@ print("-OK")
 
 print("...Cargando espacio Q ya entrenado")
 Q = readData('d_Qspace_real.dat')
+
+# Calculamos epsilon variable al inicio:
+porcentajeEntrenamiento = calculaNivelEntrenamientoQ(Q, False)
+print "......nivel entrenamiento: %d %", porcentajeEntrenamiento
+
 print("-OK")
 
 
@@ -182,7 +187,7 @@ while True:
     elif(respuesta is 'E') or (respuesta is 'e'):
 
         print 'Inicializamos epsilon y experiencias...'
-        experiencias = []
+        experiences = []
 
         # Calculamos epsilon variable al inicio:
         porcentajeEntrenamiento = calculaNivelEntrenamientoQ(Q, False)
@@ -339,26 +344,13 @@ while True:
 
             S_1 = calculoEstado(pos_D0, pos_D1, pos_R)
 
-            # # Compruebo si se termina Episodio:
-            # if (pos_D1[0]==0):
-            #     #Disco llega al borde izquierdo
-            #     if( 0 < pos_D1[1] < (NUM_SEC_Y-1)):
-            #         rr = -1
-            #     end_episodio = True
-            #
-            # elif distancia(pos_R,pos_D1)==0:
-            #      print 'Disco chocó contra robot en S_1'
-            #      end_episodio = True
-            #      rr = 5
-
 
             # Guardar experiencia si no es la primera vez
             if first_action == False:
-                experiencia = [S,a,rr,S_1]
-                experiencias.append(experiencia)
+                experience = [S,a,rr,S_1]
+                experiences.append(experience)
 
             a = elegirAccionAleatoria(pos_R)
-            #a = elegirAccionPEOR(pos_R=)
             #a = elegirAccion(pos_R, S, Q, epsilon_v)
 
             #Si se debe mover...
@@ -414,7 +406,7 @@ while True:
             exitIceQueen(camera, s)
             break
 
-        elif(disc_Out==True) or (key == ord("s")): #or (center_ROBOT is None) or (center_DISC is None):
+        elif(disc_Out==True) or (key == ord("s") or (pos_D1[0]==0):
 
             if(disc_Out==True):
                 print '(!) Episodio termina porque algo falla con la detección dentro de la mesa'
@@ -422,55 +414,47 @@ while True:
                 print ' center_DISC  = ', center_DISC
                 print ' disc_Out = ', disc_Out
                 print '\n'
+            elif (pos_D1[0]==0):
+                print 'Disco llega a nivel 0 (lado portería)'
             else:
                 print 'Lanzamiento detenido'
 
             end_episodio = True
 
-            print'¿Quieres recompensar de todas formas? [S = si]'
+            print'Pulsa Recompensa (u otra tecla para cancelar) >> '
             key = cv2.waitKey(0) & 0xFF
             respuesta = chr(key)
 
-            if(respuesta == 'S') or (respuesta == 's'):
-                # print'''
-                # \t 1 - ¡PERFeCTO!       :) Recompensa muy positiva
-                # \t 2 - Bien             :) Recompensa positiva
-                # \t 3 - Regular...
-                # \t 4 - Mal              :( Recompensa negativa
-                # \t 5 - ¡Muy MAL!        :( Recompensa muy negativa
-                # '''
-                # respuesta = raw_input('recompensa >> ')
-                print'recompensa >> '
-                key = cv2.waitKey(0) & 0xFF
-                respuesta = chr(key)
-                _, experiencias = actualizarUltimaEx(experiencias, respuesta)
+            if (int(respuesta) is in range(1,6)): #[1,2,3,4,5]
+                _, experiences = actualizarUltimaEx(experiences, respuesta)
             else:
                 # Borro experiencias de episodio
-                experiencias = []
+                experiences = []
                 #salgo del bucle sin entrenar Q
                 break
 
 
         elif (key == ord('1')): #Detener episodio pero recompensando [+20] :)
-            end_episodio, experiencias = actualizarUltimaEx(experiencias, '1')
+            end_episodio, experiences = actualizarUltimaEx(experiences, '1')
         elif (key == ord('2')): #Detener episodio pero recompensando [+10] :)
-            end_episodio, experiencias = actualizarUltimaEx(experiencias, '2')
+            end_episodio, experiences = actualizarUltimaEx(experiences, '2')
         elif (key == ord('3')): #Detener episodio pero recompensando [+1] ~~
-            end_episodio, experiencias = actualizarUltimaEx(experiencias, '3')
+            #end_episodio, experiences = actualizarUltimaEx(experiences, '3')
+            print ('Regular... no hay recompensa extra...')
         elif (key == ord('4')): #Detener episodio pero recompensando [-5] :(
-            end_episodio, experiencias = actualizarUltimaEx(experiencias, '4')
+            end_episodio, experiences = actualizarUltimaEx(experiences, '4')
         elif (key == ord('5')): #Detener episodio pero recompensando [-10] :(
-            end_episodio, experiencias = actualizarUltimaEx(experiencias, '5')
+            end_episodio, experiences = actualizarUltimaEx(experiences, '5')
 
 
         if(end_episodio == True):
             # Si el episodio se ha acabado: entreno Q con las experiencias
             #print '\n Experiencias en este lanzamiento = ', experiencias
 
-            Q = Entrena_Q_con_Experiencias(Q, experiencias, velAprendizaje, factorDescuento, num_veces)
+            Q = Entrena_Q_con_Experiencias(Q, experiences, velAprendizaje, factorDescuento, num_veces)
 
             # Borro experiencias de episodio
-            experiencias = []
+            experiences = []
 
             # Calculo porcentaje entrenamiento y muestro en pantalla
             porcentajeEntrenamiento = calculaNivelEntrenamientoQ(Q, True)

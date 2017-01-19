@@ -38,7 +38,7 @@ def update_actual_sector_position(ix,iy,actual_sector):
     # B = Disco no se ha movido
     # C = Disco fuera
 
-    #Si no te has salido de la matriz:
+    # Si no te has salido de la matriz:
     if (mUP_X<ix<mDOWN_X) & (mUP_Y<iy<mDOWN_Y):
         newXsector = (ix-mUP_X) // SEC_SIZ
         newYsector = (iy-mUP_Y) // SEC_SIZ
@@ -58,6 +58,8 @@ def update_actual_sector_position(ix,iy,actual_sector):
     else:
         return 'C', (-1,-1) #Disco fuera
 
+
+# ---
 def lanzamientoCompletoDisco():
 
     croSectors = []
@@ -68,7 +70,7 @@ def lanzamientoCompletoDisco():
     iy = randint(mUP_Y+2,mDOWN_Y-2)
 
     # Genero nuevas velocidades iniciales:
-    vx = randint(-10,-5) # Random entre -10 y -1 : siempre avanza
+    vx = randint(-10,-3) # Random entre -10 y -1 : siempre avanza
     vy = randint(-10,10) # Random entre -10 y 10
 
     old_sector = (-10,-10)
@@ -99,15 +101,17 @@ def lanzamientoCompletoDisco():
 
 # Función para calcular la posición que tendria que tener el robot en mm para
 # estar en un sector concreto.
+#           print("Posicion para sector (1,1): ")
+#           print(calcRobotPos_in_mm((0,0)))
 def calcRobotPos_in_mm(pos_R):
 
     ix = pos_R[0]*SEC_SIZ + mUP_X + SEC_SIZ/2
     iy = pos_R[1]*SEC_SIZ + mUP_Y + SEC_SIZ/2
 
+
     return (ix,iy)
 
-# print("Posicion para sector (1,1): ")
-# print(calcRobotPos_in_mm((0,0)))
+
 
 # Función que devuelve el siguiente sector del Disco
 def PosDisco(croSectors,step):
@@ -150,10 +154,10 @@ def siguientePosRobot(pos_R, a):
 
 # Función para detectar en qué trayectoria nos encontramos. (-99 si mueve atrás)
 #       Ejemplo:
-#            detectarTray((5,1),(4,0)) = 20  [...mirar cuaderno]
-#            detectarTray((0,0),(1,1)) = -99 ERROR se ha movido hacia atrás
+#            detectTra((5,1),(4,0)) = 20  [...mirar cuaderno]
+#            detectTra((0,0),(1,1)) = -99 ERROR se ha movido hacia atrás
 #
-def detectarTray(pos_D0, pos_D1):
+def detectTra(pos_D0, pos_D1):
 
     x = 0
     y = 1
@@ -189,20 +193,21 @@ def detectarTray(pos_D0, pos_D1):
 
     return trayectoria
 
+
 # Función que devuelve un movimiento de disco aleatorio
 def movimientoDiscoAleatorio(pos_D0):
 
-# TRAYECTORIAS POSIBLES DISCO: 5 o 3 en los extremos.
-#    .-----.-----.-----.    .-----.-----.-----.
-#    |     | 2 \ |  1  |    |     | 2 \ |  1  |
-#    |     |    \|  |  |    |     |    \|  |  |
-#    .-----.-----\--|--.    .-----.-----\--|--.
-#    |     | 3 --- D D |    |     | 3 --- D D |
-#    |     |     | D D |    |     |     | D D |
-#    .-----.-----/--|--.    .-----.-----.-----.
-#    |     |   / |  |  |
-#    |     | 4   |  5  |       ttt = 1,2,3,4,5
-#    .-----.-----.-----.
+    # TRAYECTORIAS POSIBLES DISCO: 5 o 3 en los extremos.
+    #    .-----.-----.-----.    .-----.-----.-----.
+    #    |     | 2 \ |  1  |    |     | 2 \ |  1  |
+    #    |     |    \|  |  |    |     |    \|  |  |
+    #    .-----.-----\--|--.    .-----.-----\--|--.
+    #    |     | 3 --- D D |    |     | 3 --- D D |
+    #    |     |     | D D |    |     |     | D D |
+    #    .-----.-----/--|--.    .-----.-----.-----.
+    #    |     |   / |  |  |
+    #    |     | 4   |  5  |       ttt = 1,2,3,4,5
+    #    .-----.-----.-----.
 
     # Detecto si está pegado a los límites:
     if pos_D0[1]==0:                #Top
@@ -248,6 +253,48 @@ def recompensaInmediata(pos_R, pos_D):  #(S, a, S_1)
         #    rr = -rr
 
     return rr
+
+
+# Actualizar última experiencia
+#   experiencias[-1][2] = valor nuevo
+def actualizarUltimaEx(experiencias, res):
+
+    end_episodio = True
+
+    if(experiencias == []):
+        return end_episodio, experiencias
+
+    # print'''
+    #     \t 1 - ¡PERFECTO!       :) Recompensa muy positiva
+    #     \t 2 - Bien             :) Recompensa positiva
+    #     \t 3 - Regular...
+    #     \t 4 - Mal              :( Recompensa negativa
+    #     \t 5 - ¡Muy MAL!        :( Recompensa muy negativa
+    # '''
+    # res = raw_input('>> ')
+
+    if (res == '1'): #Recompensando [+20] :)
+        print '¡BRAVO ROBOT! :)'
+        experiencias[-1][2] = 10
+
+    elif (res == '2'): #Recompensando [+10] :)
+        print '¡Muy bien robot! :)'
+        experiencias[-1][2] = 5
+
+    elif (res == '3'): #Recompensando [+1] ~~
+        print 'No está mal, pero sigue intentándolo... :/'
+        experiencias[-1][2] = 1
+
+    elif (res == '4'): #Recompensando [-5] :()
+        print 'Mal robot :('
+        experiencias[-1][2] = -5
+
+    elif (res == '5'): #Recompensando [-5] :()
+        print '¡Muy MAL! :('
+        experiencias[-1][2] = -10
+
+    return end_episodio, experiencias
+
 
 # Función para calcular acciones legales
 def calcularAccionesLegales(pos_R):
@@ -392,15 +439,12 @@ def setMessageUDP(target,robotCoord, typo='a', vel=3):
         dato[5] = (target_X>>8)&0xFF
         dato[6] = target_X&0xFF
 
-        #define MAX_ACCEL 275
-        #define MAX_SPEED 32000
-        #define MIN_ACCEL 100
-        #define MIN_SPEED 5000
+        # Speed
         if(vel is 3):       #fast playing
             accel = ACCEL_FAST  #150
             sppeed = SPEED_FAST #20000
         elif(vel is 2):     #normal training
-            accel = ACCEL_SLOW  #130
+            accel = ACCEL_SLOW  #100
             sppeed = SPEED_SLOW #10000
         else:               #very slow mode
             accel = ACCEL_SLOW  #100
@@ -449,44 +493,3 @@ def readData(file_name = 'dataa.dat'):
     archivo.close                   # Cierra archivo
 
     return dataa                    # Devuelve lectura
-
-
-# Actualizar última experiencia
-#   experiencias[-1][2] = valor nuevo
-def actualizarUltimaEx(experiencias, res):
-
-    end_episodio = True
-
-    if(experiencias == []):
-        return end_episodio, experiencias
-
-    # print'''
-    #     \t 1 - ¡PERFECTO!       :) Recompensa muy positiva
-    #     \t 2 - Bien             :) Recompensa positiva
-    #     \t 3 - Regular...
-    #     \t 4 - Mal              :( Recompensa negativa
-    #     \t 5 - ¡Muy MAL!        :( Recompensa muy negativa
-    # '''
-    # res = raw_input('>> ')
-
-    if (res == '1'): #Recompensando [+20] :)
-        print '¡BRAVO ROBOT! :)'
-        experiencias[-1][2] = 10
-
-    elif (res == '2'): #Recompensando [+10] :)
-        print '¡Muy bien robot! :)'
-        experiencias[-1][2] = 5
-
-    elif (res == '3'): #Recompensando [+1] ~~
-        print 'No está mal, pero sigue intentándolo... :/'
-        experiencias[-1][2] = 1
-
-    elif (res == '4'): #Recompensando [-5] :()
-        print 'Mal robot :('
-        experiencias[-1][2] = -5
-
-    elif (res == '5'): #Recompensando [-5] :()
-        print '¡Muy MAL! :('
-        experiencias[-1][2] = -10
-
-    return end_episodio, experiencias

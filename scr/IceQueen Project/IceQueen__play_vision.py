@@ -7,8 +7,8 @@
 #   Author: Anita de Prado
 #   Hardware: Arduino Mega2560 + JJROBOTS brain shield v3 (devia)
 #
-#   Date: 15/01/2017
-#   Version: 1.2
+#   Date: 18/01/2017
+#   Version: 2
 #
 # License: Open Software GPL License
 ###########################################################################
@@ -28,6 +28,11 @@ from Q_utils import *
 from Q_space import *
 from Vision_utils import *
 
+# Playing speed
+#   3 = fast playing
+#   2 = normal training
+#   1 = very slow
+vel_play = 3
 
 # Actual & old sector positions
 pos_R = (-1,-1)
@@ -44,8 +49,6 @@ drawSectors = True
 # ----------------------------------------------
 
 print("...Cargando valores HSV")
-# greenLower,greenUpper,blueLower,blueUpper = readData('d_valuesHSV.dat')
-# HSV_values = greenLower,greenUpper,blueLower,blueUpper
 HSV_values = readData('d_valuesHSV.dat')
 print("-OK")
 
@@ -79,7 +82,7 @@ if(camera.isOpened()==False):
     print("¡No hay camara conectada!")
 
 # Define the codec and create VideoWriter object
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
+fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 out_video = cv2.VideoWriter('out_video.avi',fourcc, 20.0, (FRAME_X,FRAME_Y))
 
 video_record = False
@@ -192,8 +195,8 @@ while True:
             target_sector_R = siguientePosRobot(pos_R, a)
             target_mm_R = calcRobotPos_in_mm(target_sector_R)
 
-            # Enviamos ordenes al Robot para que alcance la posición inicial:
-            sendToRobot(s,target_mm_R,center_ROBOT,'a') #fast
+            # Enviamos ordenes al Robot para que alcance la posición:
+            sendToRobot(s,target_mm_R,center_ROBOT,'a', vel_play) #default:fast
 
     # Por comodidad, si detecta el disco fuera del tablero,
     # enviamos ordenes al Robot para que vuelva hacia el lado de la portería:
@@ -206,8 +209,8 @@ while True:
             target_sector_R = (0,pos_R[1])
             target_mm_R = calcRobotPos_in_mm(target_sector_R)
 
-            # Enviamos ordenes al Robot para que alcance la posición inicial:
-            sendToRobot(s,target_mm_R,center_ROBOT,'a',2) #slow
+            # Enviamos ordenes al Robot para que alcance la posición trasera despacio:
+            sendToRobot(s,target_mm_R,center_ROBOT,'a',1) # very slow
 
 
 

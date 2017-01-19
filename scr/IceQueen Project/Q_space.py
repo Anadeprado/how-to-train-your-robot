@@ -25,7 +25,7 @@ def calculoEstado(pos_D0, pos_D1, pos_R):
     x = 0
     y = 1
 
-    trayectoria = detectarTray(pos_D0, pos_D1)
+    trayectoria = detectTra(pos_D0, pos_D1)
 
     #estado_iker = (pos_R[0],pos_R[1],trayectoria)
     estado = trayectoria*ROBOT_TOTAL_POS + NUM_SEC_Y*pos_R[x] + pos_R[y]
@@ -33,127 +33,208 @@ def calculoEstado(pos_D0, pos_D1, pos_R):
     return estado
 
 
-# Función para elegir una acción aleatoria
+#----------------------------------------------------------------------
+#---    Functions for decision making. POLICY of decision (pi)  -------
+#----------------------------------------------------------------------
+
+# Función para elegir una acción aleatoria de entre las posibles.
 def elegirAccionAleatoria(pos_R):
 
+    # 'accionesLegales' muestra opciones válidas. Ej: [3,5,6]
     accionesLegales = calcularAccionesLegales(pos_R)
-    # 'accionesLegales' muestra opciones válidas en plan: [3,5,6,8]
 
     # Ahora elegimos una al azar entre ellas:
-    accion = choice(accionesLegales)
+    accionA = choice(accionesLegales)
 
-    return accion
+    return accionA
 
+# Función para elegir la 'mejor' acción de entre las posibles.
+#   Si hay empate entre varias, elegirá una aleatoria.
+def elegirAccionMEJOR(pos_R, estado, Q):
 
-# La política es una función que depende si epsilon:
-#  - grande(=0.99) = EXPLO-RACIÓN: la acción se elija con mayor probabilidad al azar.
-#  - pequeño(=0.0) = EXPLO-TACIÓN: las acción se elija con menor probabilidad al azar.
-#       en este segundo caso será más probable que salga la MEJOR opción, la de mayor recompensa.
-# https://studywolf.wordpress.com/2012/11/25/reinforcement-learning-q-learning-and-exploration/
-
-# Es lo que llamamos MODO o POLICY (pi)
-# Otra explicacion: La posibilidad más simple es elegir completamente al azar entre una opción y otra,
-# pero usaremos una opción un poco más inteligente y asignaremos una probabilidad
-# a cada acción en función del valor Q asociado, de forma que cuanto mayor sea
-# el valor Q de esa acción, mayor será la probabilidad de ser elegida.
-# De esta forma, incluso las acciones con valores Q más bajos tendrán opciones de ser elegidas.
-
-#   Esta es mi política:
-#       epsilon > 0.7 ---> Aleatorio Total (ya que se ha entrenado menos del 30%)
-#       sino, será por probabilidades
-def elegirAccion(pos_R, estado, Q, epsilon):
+    actionB = 8
 
     # 'accionesLegales' muestra opciones válidas en plan: [3,5,6]
     accionesLegales = calcularAccionesLegales(pos_R)
 
-    if epsilon > 0.85:
-        accion = choice(accionesLegales)
+    recompensas = Q[estado,:]
 
+    #'rr_elegidas' son las recompensas guardadas en las posiciones accionesLegales
+    #   recompensas[0,0,2,0,1,0,0,0] --->
+    #   accionesLegales [3,5,6] --->
+    #   --->    rr_elegidas[2,1,0]
+    rr_elegidas = [recompensas[i] for i in accionesLegales]
+    maxQ = max(rr_elegidas)
+
+    count = rr_elegidas.count(maxQ)
+    #Si varias cumplen con ser las peores:
+    if count > 1:
+        best = [i for i in range(len(rr_elegidas)) if rr_elegidas[i] == maxQ]
+        i = choice(best)
     else:
-        #acciones_a_elegir = [self.getQ(state, a) for a in self.actions]
-        recompensas = Q[estado,:]
-        #print 'Recompensas para el estado ', estado, 'son: ', recompensas
+        i = rr_elegidas.index(maxQ)
 
-        #'rr_elegidas' son las recompensas guardadas en las posiciones accionesLegales
-        #   recompensas[0,0,2,0,1,0,0,0] --->
-        #   accionesLegales [3,5,6] --->
-        #   --->    rr_elegidas[2,1,0]
-        rr_elegidas = [recompensas[i] for i in accionesLegales]
-        maxQ = max(rr_elegidas)
+    actionB = accionesLegales[i]
 
-        # Si esto se cumple, NO cogemos la mejor acción sino que exploramos:
-        if random() < epsilon:
-            minQ = min(rr_elegidas)
-            mag = max(abs(minQ), abs(maxQ))
-            # Add random values to all the actions, recalculate maxQ
-            # -->Asignamos una probabilidad a cada acción de forma que cuanto mayor sea
-            # -->el valor Q de esa acción, mayor será la probabilidad de ser elegida.
-            rr_elegidas = [rr_elegidas[i] + random() * mag - .5 * mag for i in range(len(rr_elegidas))]
-            maxQ = max(rr_elegidas)
+    return actionB
 
-        count = rr_elegidas.count(maxQ)
-        #Si varias cumplen con ser las mejores:
-        if count > 1:
-            best = [i for i in range(len(rr_elegidas)) if rr_elegidas[i] == maxQ]
-            i = choice(best)
-        else:
-            i = rr_elegidas.index(maxQ)
-
-        action = accionesLegales[i]
-
-        return action
-
+# Función para elegir la 'peor' acción de entre las posibles.
+#   Si hay empate entre varias, elegirá una aleatoria.
 def elegirAccionPEOR(pos_R, estado, Q):
 
-        # 'accionesLegales' muestra opciones válidas en plan: [3,5,6]
-        accionesLegales = calcularAccionesLegales(pos_R)
+    actionP = 8
 
-        recompensas = Q[estado,:]
+    # 'accionesLegales' muestra opciones válidas en plan: [3,5,6]
+    accionesLegales = calcularAccionesLegales(pos_R)
 
-        #'rr_elegidas' son las recompensas guardadas en las posiciones accionesLegales
-        #   recompensas[0,0,2,0,1,0,0,0] --->
-        #   accionesLegales [3,5,6] --->
-        #   --->    rr_elegidas[2,1,0]
-        rr_elegidas = [recompensas[i] for i in accionesLegales]
-        minQ = min(rr_elegidas)
+    recompensas = Q[estado,:]
 
-        count = rr_elegidas.count(minQ)
-        #Si varias cumplen con ser las peores:
-        if count > 1:
-            best = [i for i in range(len(rr_elegidas)) if rr_elegidas[i] == minQ]
-            i = choice(best)
-        else:
-            i = rr_elegidas.index(minQ)
+    #'rr_elegidas' son las recompensas guardadas en las posiciones accionesLegales
+    #   recompensas[0,0,2,0,1,0,0,0] --->
+    #   accionesLegales [3,5,6] --->
+    #   --->    rr_elegidas[2,1,0]
+    rr_elegidas = [recompensas[i] for i in accionesLegales]
 
+    minQ = min(rr_elegidas)
+    count = rr_elegidas.count(minQ)
+
+    # Corrección de las líneas anteriores para no confundir "acción menos
+    #recompensada" con "recompensas negativas"
+    #minQ = min(abs(rr_elegidas))
+    #count = rr_elegidas.count(minQ) + rr_elegidas.count(-minQ)
+
+    #Si varias cumplen con ser las peores:
+    if count > 1:
+        best = [i for i in range(len(rr_elegidas)) if rr_elegidas[i] == minQ]
+        i = choice(best)
+    else:
+        i = rr_elegidas.index(minQ)
+
+    actionP = accionesLegales[i]
+
+    return actionP
+
+# Función para elegir la primero las acciones 'NO entrenadas'. O al menos las
+# que tienen una recompensa guardada de '0'
+#    Si hay empate entre varias, elegirá una aleatoria de entre las posibles.
+def elegirAccion_PrimeroNoEntrenadas(pos_R, estado, Q):
+
+    actionn = 8
+
+    # 'accionesLegales' muestra opciones válidas en plan: [3,5,6]
+    accionesLegales = calcularAccionesLegales(pos_R)
+
+    recompensas = Q[estado,:]
+
+    #'rr_elegidas' son las recompensas guardadas en las posiciones accionesLegales
+    #   recompensas[0,0,2,0,1,0,0,0] --->
+    #   accionesLegales [3,5,6] --->
+    #   --->    rr_elegidas[2,1,0]
+    rr_elegidas = [recompensas[i] for i in accionesLegales]
+
+    # Buscamos cuántas hay con recompensa cero = '0'
+    count = rr_elegidas.count(0)
+
+    #Si no hay ninguna sin entrenar, elegimos completamente al azar.
+    if count == 0:
+        actionn = choice(accionesLegales)
+    #Si varias son cero, elegimos al azar entre ellas:
+    elif count > 1:
+        best = [i for i in range(len(rr_elegidas)) if rr_elegidas[i] == 0]
+        i = choice(best)
+        actionn = accionesLegales[i]
+    else:
+        i = rr_elegidas.index(0)
         actionn = accionesLegales[i]
 
-        return actionn
+    return actionn
 
-def elegirAccionMEJOR(pos_R, estado, Q):
 
-        # 'accionesLegales' muestra opciones válidas en plan: [3,5,6]
-        accionesLegales = calcularAccionesLegales(pos_R)
+#
+def accion_de_Explotacion(accionesLegales, estado, Q, epsilon):
 
-        recompensas = Q[estado,:]
+    recompensas = Q[estado,:]
+    #print 'Recompensas para el estado ', estado, 'son: ', recompensas
 
-        #'rr_elegidas' son las recompensas guardadas en las posiciones accionesLegales
-        #   recompensas[0,0,2,0,1,0,0,0] --->
-        #   accionesLegales [3,5,6] --->
-        #   --->    rr_elegidas[2,1,0]
-        rr_elegidas = [recompensas[i] for i in accionesLegales]
+    #'rr_elegidas' son las recompensas guardadas en las posiciones accionesLegales
+    #   recompensas[0,0,2,0,1,0,0,0] --->
+    #   accionesLegales [3,5,6] --->
+    #   --->    rr_elegidas[2,1,0]
+    rr_elegidas = [recompensas[i] for i in accionesLegales]
+    maxQ = max(rr_elegidas)
+
+    # Si esto se cumple, NO cogemos la mejor acción sino que exploramos:
+    if random() < epsilon:
+        minQ = min(rr_elegidas)
+        mag = max(abs(minQ), abs(maxQ))
+        # Add random values to all the actions, recalculate maxQ
+        # -->Asignamos una probabilidad a cada acción de forma que cuanto mayor sea
+        # -->el valor Q de esa acción, mayor será la probabilidad de ser elegida.
+        rr_elegidas = [rr_elegidas[i] + random() * mag - .5 * mag for i in range(len(rr_elegidas))]
         maxQ = max(rr_elegidas)
 
-        count = rr_elegidas.count(maxQ)
-        #Si varias cumplen con ser las peores:
-        if count > 1:
-            best = [i for i in range(len(rr_elegidas)) if rr_elegidas[i] == maxQ]
-            i = choice(best)
+    count = rr_elegidas.count(maxQ)
+    #Si varias cumplen con ser las mejores:
+    if count > 1:
+        best = [i for i in range(len(rr_elegidas)) if rr_elegidas[i] == maxQ]
+        i = choice(best)
+    else:
+        i = rr_elegidas.index(maxQ)
+
+    accionnn = accionesLegales[i]
+
+    return accionnn
+
+
+
+# Función que elige una acción siguiendo una política (POLICY) concreta:
+def elegirAccion(pos_R, estado, Q, epsilon, policy='explot_eps', eps_limit = 0.80):
+
+    accion = 8 #stop
+
+    # 'accionesLegales' muestra opciones válidas en plan: [3,5,6]
+    accionesLegales = calcularAccionesLegales(pos_R)
+
+
+    if policy == 'explot_eps':
+
+        # La política de 'explot_eps' depende si epsilon:
+        #  - grande(=0.96) = EXPLO-RACIÓN: la acción se elija con mayor probabilidad al azar.
+        #  - pequeño(=0.30) = EXPLO-TACIÓN: las acción se elija con menor probabilidad al azar.
+        #       en este segundo caso será más probable que salga la MEJOR opción, la de mayor recompensa.
+        # https://studywolf.wordpress.com/2012/11/25/reinforcement-learning-q-learning-and-exploration/
+        #
+        # Otra explicacion: La posibilidad más simple es elegir completamente al azar entre una opción y otra,
+        # pero usaremos una opción un poco más inteligente y asignaremos una probabilidad
+        # a cada acción en función del valor Q asociado, de forma que cuanto mayor sea
+        # el valor Q de esa acción, mayor será la probabilidad de ser elegida.
+        # De esta forma, incluso las acciones con valores Q más bajos tendrán opciones de ser elegidas.
+        #
+        #   Esta es mi política en concreto:
+        #       epsilon > 0.80 ---> Aleatorio Total (ya que se ha entrenado menos del 20%)
+        #       sino, será por probabilidades (explotación)
+
+        if epsilon > eps_limit: #epsilon > 0.80
+            accion = choice(accionesLegales) #Aleatoria
         else:
-            i = rr_elegidas.index(maxQ)
+            accion = accion_de_Explotacion(accionesLegales, estado, Q, epsilon)
 
-        actionn = accionesLegales[i]
+    # La política de 'explot_eps_fast' es igual que 'explot_eps' pero al
+    # principio (hasta el 15%), elige primero las acciones nunca entrenadas
+    #
+    elif policy == 'explot_eps_fast':
 
-        return actionn
+        if epsilon > eps_limit: #epsilon > 0.80 ---> Entrenado menos del 20%
+            accion = elegirAccion_PrimeroNoEntrenadas(pos_R, estado, Q)
+        else:
+            accion = accion_de_Explotacion(accionesLegales, estado, Q, epsilon)
+
+    else:
+        print ('En ElegirAccion(): Política mal definida... robot no se mueve')
+
+    return accion
+
+
 
 
 #------------------------------------------------------------------------
@@ -228,8 +309,8 @@ def calculaNivelEntrenamientoQ(Q, mostrar = False):
 
     cuenta_zeros = 0
     for fila in Q:
-        for accion in fila:
-            if accion == 0:
+        for ac in fila: #Acciones en fila
+            if ac == 0:
                 cuenta_zeros += 1
 
     si_entrenadas = TOTALES_A_ENTRENAR-cuenta_zeros

@@ -93,7 +93,8 @@ ROBOT_TOTAL_POS = (rxMax-rxMin+1)*(ryMax-ryMin+1) #16
 # Numero de trayectorias por NIVEL (columna):
 #TRAY_POR_NIVEL = (3*NUM_SEC_Y)-2        #8 por nivel:  1+3+3+1
 TRAY_POR_NIVEL = (5*NUM_SEC_Y)-4         #16 por nivel: 3+5+5+3
-TRAY_TOTALES = TRAY_POR_NIVEL*NUM_SEC_X  #112 "capas"
+NIVELES_ENTRENADOS = NUM_SEC_X -1        #El nivel 0 no se entrena: -1
+TRAY_TOTALES = TRAY_POR_NIVEL*NIVELES_ENTRENADOS  #112 "capas"
 
 
 # Número de ESTADOS: 1792
@@ -116,13 +117,19 @@ sec_XR = rxMax - rxMin
 sec_YR = ryMax - ryMin
 # 3 por arriba, 3 por abajo + 3drch + 3izq - 4 repetidas esquinas
 # 6*sec_XR + 6*sec_YR - 4 = 32
+#num_ACCIONES_NO_VALIDAS = 6*sec_XR + 6*sec_YR - 4 #32
 num_ACCIONES_NO_VALIDAS = 6*sec_XR + 6*sec_YR - 4 #32
 num_ACCIONES_QUE_JAMAS_SE_ENTRENARAN = num_ACCIONES_NO_VALIDAS*TRAY_TOTALES
+
+# 10 del extremo
+#num_TRAYECTORIAS_NO_SE_ENTRENARÁN = 10
 
 TOTALES_A_ENTRENAR = num_ESTADOS*num_ACCIONES
 #---> 16.128 entrenamientos distintos!
 
 TOTALES_A_ENTRENAR_REALES = TOTALES_A_ENTRENAR - num_ACCIONES_QUE_JAMAS_SE_ENTRENARAN
+
+
 
 # print 'Espacio de ', NUM_SEC_X,'x',NUM_SEC_Y
 # print 'Número de ESTADOS = ', num_ESTADOS

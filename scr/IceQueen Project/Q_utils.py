@@ -59,7 +59,7 @@ def update_actual_sector_position(ix,iy,actual_sector):
         return 'C', (-1,-1) #Disco fuera
 
 
-# ---
+# Función que devuelve los sectores cruzados en un lanzamiento simulado.
 def lanzamientoCompletoDisco():
 
     croSectors = []
@@ -69,9 +69,13 @@ def lanzamientoCompletoDisco():
     ix = mDOWN_X - 11
     iy = randint(mUP_Y+2,mDOWN_Y-2)
 
+    # # Genero nuevas velocidades iniciales:
+    # vx = randint(-10,-3) # Random entre -10 y -1 : siempre avanza
+    # vy = randint(-10,10) # Random entre -10 y 10
+
     # Genero nuevas velocidades iniciales:
-    vx = randint(-10,-3) # Random entre -10 y -1 : siempre avanza
-    vy = randint(-10,10) # Random entre -10 y 10
+    vx = randint(-70,-10)
+    vy = randint(-70,70)
 
     old_sector = (-10,-10)
     #actual_sector = (-1,-1)
@@ -273,11 +277,11 @@ def actualizarUltimaEx(experiencias, res):
     # '''
     # res = raw_input('>> ')
 
-    if (res == '1'): #Recompensando [+20] :)
+    if (res == '1'): #Recompensando [+10] :)
         print '¡BRAVO ROBOT! :)'
         experiencias[-1][2] = 10
 
-    elif (res == '2'): #Recompensando [+10] :)
+    elif (res == '2'): #Recompensando [+5] :)
         print '¡Muy bien robot! :)'
         experiencias[-1][2] = 5
 
@@ -289,7 +293,7 @@ def actualizarUltimaEx(experiencias, res):
         print 'Mal robot :('
         experiencias[-1][2] = -5
 
-    elif (res == '5'): #Recompensando [-5] :()
+    elif (res == '5'): #Recompensando [-10] :()
         print '¡Muy MAL! :('
         experiencias[-1][2] = -10
 

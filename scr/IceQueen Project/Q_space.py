@@ -14,6 +14,7 @@ from Q_utils import *
 from random import randint
 from random import random
 from random import choice
+from math import exp
 
 
 # Función para detectar en qué estado nos encontramos
@@ -67,7 +68,7 @@ def elegirAccionMEJOR(pos_R, estado, Q):
     maxQ = max(rr_elegidas)
 
     count = rr_elegidas.count(maxQ)
-    #Si varias cumplen con ser las peores:
+    #Si varias cumplen con ser las mejores:
     if count > 1:
         best = [i for i in range(len(rr_elegidas)) if rr_elegidas[i] == maxQ]
         i = choice(best)
@@ -150,8 +151,40 @@ def elegirAccion_PrimeroNoEntrenadas(pos_R, estado, Q):
     return actionn
 
 
-#
+
 def accion_de_Explotacion(accionesLegales, estado, Q, epsilon):
+
+    #Con probabilidad 1-epsilon Exploramos al azar.
+    if random() < epsilon:
+        # Al azar entre ellas:
+        accionnn = choice(accionesLegales)
+
+    # De lo contrario, elegimos la MEJOR
+    else:
+        recompensas = Q[estado,:]
+        #print 'Recompensas para el estado ', estado, 'son: ', recompensas
+        #'rr_elegidas' son las recompensas guardadas en las posiciones accionesLegales
+        #   recompensas[0,0,2,0,1,0,0,0] --->
+        #   accionesLegales [3,5,6] --->
+        #   --->    rr_elegidas[2,1,0]
+        rr_elegidas = [recompensas[i] for i in accionesLegales]
+        maxQ = max(rr_elegidas)
+
+        count = rr_elegidas.count(maxQ)
+        #Si varias cumplen con ser las mejores:
+        if count > 1:
+            best = [i for i in range(len(rr_elegidas)) if rr_elegidas[i] == maxQ]
+            i = choice(best)
+        else:
+            i = rr_elegidas.index(maxQ)
+
+        accionnn = accionesLegales[i]
+
+    return accionnn
+
+
+#
+def accion_de_Explotacion222(accionesLegales, estado, Q, epsilon):
 
     recompensas = Q[estado,:]
     #print 'Recompensas para el estado ', estado, 'son: ', recompensas
@@ -185,6 +218,49 @@ def accion_de_Explotacion(accionesLegales, estado, Q, epsilon):
 
     return accionnn
 
+
+# tau = 1.12 #tau was selected by trial and error
+# def softmax(av):
+#     probs = np.zeros(n)
+#     for i in range(n):
+#         softm = ( np.exp(av[i] / tau) / np.sum( np.exp(av[:] / tau) ) )
+#         probs[i] = softm
+#     return probs
+
+# For high temperatures (τ→∞), all actions have nearly the same probability.
+# For a low temperature (τ→0+), the probability of the action with the highest
+# expected reward tends to 1
+#
+# def play_strategy(self):
+#     tau = self.tau
+#     probabilities = np.zeros(self.N)
+#     for i in range(self.N):
+#         nom = math.exp(self.Qs[self.time_step,i] / tau)
+#         denom = sum(math.exp(val/tau) for val in self.Qs[self.time_step,:])
+#         probabilities[i] = float(nom / denom)
+#     action = np.random.choice(range(self.N), p=probabilities)
+#     return action
+def accion_de_Explotacion_Softmax(accionesLegales, estado, Q, epsilon):
+
+    recompensas = Q[estado,:]
+    accionT = 8
+
+    rr_elegidas = [recompensas[i] for i in accionesLegales]
+
+    tau = calculaTau(epsilon)
+    N = len(rr_elegidas)
+
+    probabilities = np.zeros(N)
+    for i in range(N):
+
+        nom = exp(rr_elegidas[i] / tau)
+        denom = sum(exp(val/tau) for val in rr_elegidas[:])
+
+        probabilities[i] = float(nom / denom)
+
+    actionT = np.random.choice(range(N), p=probabilities)
+
+    return accionT
 
 
 # Función que elige una acción siguiendo una política (POLICY) concreta:
@@ -220,7 +296,7 @@ def elegirAccion(pos_R, estado, Q, epsilon, policy='explot_eps', eps_limit = 0.8
             accion = accion_de_Explotacion(accionesLegales, estado, Q, epsilon)
 
     # La política de 'explot_eps_fast' es igual que 'explot_eps' pero al
-    # principio (hasta el 15%), elige primero las acciones nunca entrenadas
+    # principio elige las acciones 'nunca' entrenadas
     #
     elif policy == 'explot_eps_fast':
 
@@ -228,6 +304,23 @@ def elegirAccion(pos_R, estado, Q, epsilon, policy='explot_eps', eps_limit = 0.8
             accion = elegirAccion_PrimeroNoEntrenadas(pos_R, estado, Q)
         else:
             accion = accion_de_Explotacion(accionesLegales, estado, Q, epsilon)
+
+    # La política de 'explot_100' es 100% explotación, sin depender de epsilon
+    #
+    elif policy == 'explot_softmax':
+
+        if epsilon > eps_limit: #epsilon > 0.80
+            accion = choice(accionesLegales) #Aleatoria
+        else:
+            accion = accion_de_Explotacion_Softmax(accionesLegales, estado, Q, epsilon)
+
+
+    elif policy == 'explot_eps_1e':
+
+        if epsilon > eps_limit:
+            accion = choice(accionesLegales) #Aleatoria
+        else:
+            accion = accion_de_Explotacion222(accionesLegales, estado, Q, epsilon)
 
     else:
         print ('En ElegirAccion(): Política mal definida... robot no se mueve')
@@ -324,31 +417,39 @@ def calculaNivelEntrenamientoQ(Q, mostrar = False):
     return porcentaje
 
 
-#   _Experiencia = (estado, acción, recompensa, estado siguiente)
-#        < S, a, r, S+1>
-#
-#   _Learning rate = velocidad de aprendizaje entre 0 y 1. (alpha)
-#       (0 = no aprende de nuevas exp , 1 = olvida todo y aprende nuevas exp)
-#
-#   _Discount factor = factor de descuento (gamma)
-#       (0 = solo importan refuerzos inmediatos, 1 = solo a largo plazo)
-#
-    #   siguienteRefuerzoMixto = maxRefuerzo(tabla, siguienteEstado)
-    #
-    #   tabla[estado, accion] += velocidadAprendizaje *
-    #               (refuerzo + factorDescuento * siguienteRefuerzoMixto
-    #               - tabla[estado, accion]);
-#
-#   Si queremos refinar la tabla con las mismas experiencias podemos repetir
-#   durante MAX_PASOS:
 
-    # tabla = zeros(#estados, #acciones)
-    # for paso in 1..MAX_PASOS:
-    #   for experiencia in experiencias:
-    #     estado, accion, refuerzo, siguienteEstado = experiencia
-    #     siguienteRefuerzoMixto = maxRefuerzo(tabla, siguienteEstado)
-    #     tabla[estado, accion] += velocidadAprendizaje * (
-    #       refuerzo + factorDescuento * siguienteRefuerzoMixto
-    #       - tabla[estado, accion]);
+def mapValue(value, leftMin, leftMax, rightMin, rightMax):
+    # Figure out how 'wide' each range is
+    leftSpan = leftMax - leftMin
+    rightSpan = rightMax - rightMin
 
-#
+    # Convert the left range into a 0-1 range (float)
+    valueScaled = float(value - leftMin) / float(leftSpan)
+
+    # Convert the 0-1 range into a value in the right range.
+    return rightMin + (valueScaled * rightSpan)
+
+def calculaEpsilon(porcentajeEntrenamiento):
+
+    no_entrenadas = 100-porcentajeEntrenamiento
+    pne = no_entrenadas/100
+
+    eps = mapValue(pne, 0,70, 0,1)
+
+    return eps
+
+
+def calculaTau(epsilon):
+
+    # maxTau = 1000000^100000
+    # tau = (epsilon)*maxTau +0.1
+
+    tau = mapValue(epsilon, 0,1, 0.1,1000000000)
+
+
+    return tau
+
+# epsilon > 0.80 ---> Aleatorio Total (ya que se ha entrenado menos del 20%)
+# For high temperatures (τ→∞), all actions have nearly the same probability.
+# For a low temperature (τ→0+), the probability of the action with the highest
+# expected reward tends to 1

@@ -7,8 +7,8 @@
 #   Author: Anita de Prado
 #   Hardware: Arduino Mega2560 + JJROBOTS brain shield v3 (devia)
 #
-#   Date: 18/01/2017
-#   Version: 2
+#   Date: 20/02/2017
+#   Version: 3
 #
 # License: Open Software GPL License
 ###########################################################################

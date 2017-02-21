@@ -7,8 +7,8 @@
 #   Author: Anita de Prado
 #   Hardware: Arduino Mega2560 + JJROBOTS brain shield v3 (devia)
 #
-#   Date: 18/01/2017
-#   Version: 2
+#   Date: 20/02/2017
+#   Version: 3
 #
 # License: Open Software GPL License
 ####################################################################
@@ -61,6 +61,7 @@ print ("""
        Y """)
 
 
+
 pos_D0 = [0,0] #Posición anterior disco
 pos_D1 = [0,0] #Posición siguiente disco
 pos_R  = [0,0] #Posición robot
@@ -90,16 +91,14 @@ epsilon = 0.8 # Probabilidad de elegir acciones mejores o explorar
 
 end_episodio = False
 
+
+
 #------------------------------------------------------------------------
 #-   FUNCIONES SOLO PARA SIMULACION     ---------------------------------
 #------------------------------------------------------------------------
 # Función para simulación que elige aletoriamente unas posiciones iniciales:
 def posicionesIniciales():
     global pos_R,pos_D0,crossedSectors
-
-    # El disco siempre empieza en borde derecho:
-    # pos_D0[0] = NUM_SEC_X-1 #x
-    # pos_D0[1] = randint(0,NUM_SEC_Y-1) #y
 
     # El robot puede empezar en posición aleatoria dentro de sus límites
     pos_R[0]= randint(rxMin,rxMax)
@@ -110,11 +109,10 @@ def posicionesIniciales():
     pos_D0 = PosDisco(crossedSectors,0)
 
 
+
 #------------------------------------------------------------------------
 #-   PRINCIPAL  ---------------------------------------------------------
 #------------------------------------------------------------------------
-
-
 while(1):
     print """
     ¿Qué quieres hacer?
@@ -126,7 +124,7 @@ while(1):
     \t 5- Resetear Experiencias
     \t 6- Resetear Q
     \t 7- Salir \n
-    \t 222- Ejecutar Juego
+    \t 0- Ejecutar Juego
     """
     respuesta = raw_input(">> "); # Respuesta del usuario
 
@@ -142,6 +140,7 @@ while(1):
     \t 3- EXPLORACIÓN RÁPIDA + EXPLOTACIÓN (Primero acciones no-entrenadas)
     \n
     \t 4- MODO EXPLOTACIÓN PERSONALIZADO
+
         """
         str = raw_input(">> ");
         modo_Entrenamiento = int(str)
@@ -184,7 +183,7 @@ while(1):
             #pos_D1 = movimientoDiscoAleatorio(pos_D0)
             step = 1
             pos_D1 = PosDisco(crossedSectors,step)
-            step+=1
+            step += 1
 
             S_1 = calculoEstado(pos_D0, pos_D1, pos_R)
 
@@ -213,9 +212,8 @@ while(1):
                 pos_D0 = pos_D1
 
                 # Se mueve el disco --> pos_D1
-                #pos_D1 = movimientoDiscoAleatorio(pos_D0)
                 pos_D1 = PosDisco(crossedSectors,step)
-                step+=1
+                step += 1
 
                 # Calculo estado siguiente --> S_1
                 S_1 = calculoEstado(pos_D0, pos_D1, pos_R)
@@ -223,25 +221,20 @@ while(1):
                 # Compruebo si se termina Episodio:
                 if rr == 10:
 
-
                     if(pos_R0[0]>pos_D0[0]): #Lo empuja pero desde atrás
-                        rr=-2
+                        rr=-5
                         print 'Robot recula y empuja hacia atrás disco... :('
 
-
                     elif(pos_R0[0]==pos_D0[0]): #Lo empuja lateralmente
-                        rr=0
+                        rr=5
                         _num_exitos += 1
                         _num_paradas += 1
-                        print '¡Robot atrapó el disco! :)'
-
+                        print '¡Robot golpeó el disco lateralmente! :)'
 
                     else:
                         _num_exitos += 1
                         _num_ataques += 1
-                        print '¡Robot atrapó el disco! :)'
-
-
+                        print '¡Robot golpeó el disco! :)'
 
                     end_episodio = True
 
@@ -249,7 +242,7 @@ while(1):
                 elif distancia(pos_R,pos_D1)==0:
                     print 'Parada: Disco chocó contra robot en S_1'
                     #PARADA pero no atacada...
-                    rr = 2
+                    rr = 1
                     _num_exitos += 1
                     _num_paradas += 1
 
@@ -342,16 +335,20 @@ while(1):
 
 
 
-    #222- EJECUTA JUEGO
+    #0- EJECUTA JUEGO
     #-----------------------------------------
-    elif int(respuesta)==222:
+    elif respuesta=='0':
 
         num_episodios = raw_input("¿Cuántos episodios seguidos quieres jugar? \n");
+
+        _num_exitos = 0
+        _num_paradas = 0
+        _num_ataques = 0
         plot_final_X = list()
         plot_final_Y = list()
         plot_final_Y.append(0)
         plot_final_X.append(0)
-        _num_exitos = 0
+
 
         print ("Jugando.....")
 
@@ -375,7 +372,7 @@ while(1):
 
                 # Decido siguiente acción de robot --> a
                 a = elegirAccionMEJOR(pos_R, S, Q)
-
+                pos_R0 = pos_R
                 pos_R = siguientePosRobot(pos_R, a)
                 rr = recompensaInmediata(pos_R, pos_D1)
                 pos_D0 = pos_D1
@@ -385,45 +382,73 @@ while(1):
                 S_1 = calculoEstado(pos_D0, pos_D1, pos_R)
 
                 # Compruebo si se termina Episodio:
+                #-------------------------------------------------------------
+
+                #print '¡Robot atrapó el disco! :)'
                 if rr == 10:
-                    #print '¡Robot atrapó el disco! :)'
+
+                    if(pos_R0[0]>pos_D0[0]): #Lo empuja pero desde atrás
+                        plot_final_Y.append(plot_final_Y[-1]-1) #El valor anterior menos 1
+
+                    elif(pos_R0[0]==pos_D0[0]): #Lo empuja lateralmente
+                        _num_exitos += 1
+                        _num_paradas += 1
+                        plot_final_Y.append(plot_final_Y[-1]) #El valor anterior tal cual
+
+                    else:
+                        _num_exitos += 1
+                        _num_ataques += 1
+                        plot_final_Y.append(plot_final_Y[-1]+1) #El valor anterior más 1
+
                     end_episodio = True
-                    _num_exitos += 1
-                    plot_final_Y.append(plot_final_Y[-1]+1)
 
                 elif distancia(pos_R,pos_D1)==0:
                     #print 'Disco chocó contra robot en S_1'
-                    end_episodio = True
+                    #PARADA pero no atacada...
                     _num_exitos += 1
-                    #!!!!!Cuando ejecute en modo real, no con movimiento random
-                    #de disco, aquí puedo reforzar con una rr más positiva antes
-                    #de guardar la experiencia
-                    plot_final_Y.append(plot_final_Y[-1])
-
-                elif (pos_D1[0]==0) or (step == mx_step): #Disco llega al borde izquierdo
-                    #print 'Disco llega al borde derecho: ', pos_D1
-                    #Compruebo si disco finaliza en zona de GOL:
-                    if( 0 < pos_D1[1] < (NUM_SEC_Y-1)):
-                        rr = -1
+                    _num_paradas += 1
+                    plot_final_Y.append(plot_final_Y[-1]) #El valor anterior tal cual
                     end_episodio = True
 
+                elif (pos_D1[0]==0)  or (step == mx_step): #Disco llega al borde izquierdo
+
+                    # #Compruebo si disco finaliza en zona de GOL:
+                    # if( 0 < pos_D1[1] < (NUM_SEC_Y-1)):
+                    #     rr = -1
                     plot_final_Y.append(plot_final_Y[-1]-1) #El valor anterior menos 1
+                    end_episodio = True
+
+                #-------------------------------------------------------------
 
             #Actualizo variables para mostrar en plot
             plot_final_X.append(episodio)
 
-        print 'Numero de exitos: ', _num_exitos
+
+        #print 'Numero de exitos generales: ', _num_exitos
         bb = int(num_episodios)
         pps = (float(_num_exitos)/bb)*100
-        print 'Porcentaje exitos: ', pps
+        print 'Porcentaje exitos JUGANDO: ', pps
+
+        #print '\tNumero de paradas: ', _num_paradas
+        bb = int(num_episodios)
+        pps = (float(_num_paradas)/bb)*100
+        print '\tPorcentaje paradas: ', pps
+
+        #print '\tNumero de ataques de robot al disco: ', _num_ataques
+        bb = int(num_episodios)
+        pps = (float(_num_ataques)/bb)*100
+        print '\tPorcentaje ataques: ', pps
+
 
         plt.figure('IceQueen Q-Learning')
-        plt.xlabel('Numero de lanzamiento') # etiqueta eje x
-        plt.ylabel('Sumatorio de exitos') # etiqueta eje y
-        #plt.plot(plot_final_X, plot_final_Y, 'ro', label='Frecuencia de exito')
-        plt.plot(plot_final_X, plot_final_Y, 'ro', label='Frecuencia de exito jugando')
-        plt.legend()
+
+        #plt.title('Frecuencia de exito ENTRENANDO')
+        plt.ylabel('Frecuencia de exito JUGANDO') # etiqueta eje y
+        plt.xlabel('Numero de lanzamiento')
+        plt.plot(plot_final_X,plot_final_Y,'r')
         plt.show()
+
+
 
 
 cv2.destroyAllWindows()

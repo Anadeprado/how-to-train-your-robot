@@ -7,13 +7,14 @@
 #------------------------------------------------------------------------
 #------------------------------------------------------------------------
 
+
 # Velocidad y aceleración de los motores paso a paso.
 #   SLOW : durante el entrenamiento
 #   FAST : para jugar
-ACCEL_SLOW = 100     #100 - 150*
-SPEED_SLOW = 10000   #5000 - 20000
-ACCEL_FAST = 130
-SPEED_FAST = 16000
+ACCEL_SLOW = 110     #100 - 130
+SPEED_SLOW = 10000
+ACCEL_FAST = 110     #110 - 130
+SPEED_FAST = 15000   #15000 - 16000
     #define MAX_ACCEL 275
     #define MAX_SPEED 32000
     #define MIN_ACCEL 100
@@ -67,7 +68,7 @@ mDOWN_Y = FRAME_Y-mUP_Y
 #
 NUM_SEC_X = 7
 NUM_SEC_Y = 4
-SEC_SIZ = 100 #Tamaño sectores
+SEC_SIZ = 100 #Tamaño sectores 100x100
 
 # Posiciones límites robot: (0,0)-->(3,3)
 #   Ejemplo: nunca pise nivel 4, ni 5, ni 6...
@@ -93,7 +94,7 @@ ROBOT_TOTAL_POS = (rxMax-rxMin+1)*(ryMax-ryMin+1) #16
 # Numero de trayectorias por NIVEL (columna):
 #TRAY_POR_NIVEL = (3*NUM_SEC_Y)-2        #8 por nivel:  1+3+3+1
 TRAY_POR_NIVEL = (5*NUM_SEC_Y)-4         #16 por nivel: 3+5+5+3
-NIVELES_ENTRENADOS = NUM_SEC_X -1        #El nivel 0 no se entrena: -1
+NIVELES_ENTRENADOS = NUM_SEC_X #-1        #El nivel 0 no se entrena: -1
 TRAY_TOTALES = TRAY_POR_NIVEL*NIVELES_ENTRENADOS  #112 "capas"
 
 
@@ -119,15 +120,18 @@ sec_YR = ryMax - ryMin
 # 6*sec_XR + 6*sec_YR - 4 = 32
 #num_ACCIONES_NO_VALIDAS = 6*sec_XR + 6*sec_YR - 4 #32
 num_ACCIONES_NO_VALIDAS = 6*sec_XR + 6*sec_YR - 4 #32
-num_ACCIONES_QUE_JAMAS_SE_ENTRENARAN = num_ACCIONES_NO_VALIDAS*TRAY_TOTALES
 
 # 10 del extremo
-#num_TRAYECTORIAS_NO_SE_ENTRENARÁN = 10
+num_TRAYECTORIAS_EXTREMO = 10
+
+num_ACCIONES_QUE_JAMAS_SE_ENTRENARAN = num_ACCIONES_NO_VALIDAS*TRAY_TOTALES+ num_TRAYECTORIAS_EXTREMO*num_ACCIONES*ROBOT_TOTAL_POS
+
 
 TOTALES_A_ENTRENAR = num_ESTADOS*num_ACCIONES
 #---> 16.128 entrenamientos distintos!
 
 TOTALES_A_ENTRENAR_REALES = TOTALES_A_ENTRENAR - num_ACCIONES_QUE_JAMAS_SE_ENTRENARAN
+
 
 
 

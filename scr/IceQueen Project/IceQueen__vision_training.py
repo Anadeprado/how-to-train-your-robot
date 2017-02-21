@@ -7,8 +7,8 @@
 #   Author: Anita de Prado
 #   Hardware: Arduino Mega2560 + JJROBOTS brain shield v3 (devia)
 #
-#   Date: 18/01/2017
-#   Version: 2
+#   Date: 20/02/2017
+#   Version: 3
 #
 # License: Open Software GPL License
 ###########################################################################
@@ -270,6 +270,8 @@ while True:
     \t 4 - Mal              :( Recompensa negativa
     \t 5 - ¡Muy MAL!        :( Recompensa muy negativa
     \n
+    \t 0 - No puntuar recompensa extra
+    \n
     \t Q - Salir
     \n
             """)
@@ -406,7 +408,7 @@ while True:
             exitIceQueen(camera, s)
             break
 
-        elif(disc_Out==True) or (key == ord("s") or (pos_D1[0]==0):
+        elif(disc_Out==True) or (key == ord("s")):# or (pos_D1[0]==0):
 
             if(disc_Out==True):
                 print '(!) Episodio termina porque algo falla con la detección dentro de la mesa'
@@ -421,11 +423,13 @@ while True:
 
             end_episodio = True
 
-            print'Pulsa Recompensa (u otra tecla para cancelar) >> '
+            print'Pulsa Recompensa (u otra tecla para no tener en cuenta el lanzamiento) >> '
             key = cv2.waitKey(0) & 0xFF
             respuesta = chr(key)
 
-            if (int(respuesta) is in range(1,6)): #[1,2,3,4,5]
+            nu = int(respuesta)
+
+            if nu > 0: #is in range(0,6): #[0,1,2,3,4,5]
                 _, experiences = actualizarUltimaEx(experiences, respuesta)
             else:
                 # Borro experiencias de episodio
@@ -434,17 +438,18 @@ while True:
                 break
 
 
-        elif (key == ord('1')): #Detener episodio pero recompensando [+20] :)
+        elif (key == ord('1')): #Detener episodio pero recompensando [+10] :)
             end_episodio, experiences = actualizarUltimaEx(experiences, '1')
-        elif (key == ord('2')): #Detener episodio pero recompensando [+10] :)
+        elif (key == ord('2')): #Detener episodio pero recompensando [+5] :)
             end_episodio, experiences = actualizarUltimaEx(experiences, '2')
         elif (key == ord('3')): #Detener episodio pero recompensando [+1] ~~
-            #end_episodio, experiences = actualizarUltimaEx(experiences, '3')
-            print ('Regular... no hay recompensa extra...')
+            end_episodio, experiences = actualizarUltimaEx(experiences, '3')
         elif (key == ord('4')): #Detener episodio pero recompensando [-5] :(
             end_episodio, experiences = actualizarUltimaEx(experiences, '4')
         elif (key == ord('5')): #Detener episodio pero recompensando [-10] :(
             end_episodio, experiences = actualizarUltimaEx(experiences, '5')
+        elif (key == ord('0')):
+            print ('No hay recompensa extra...')
 
 
         if(end_episodio == True):

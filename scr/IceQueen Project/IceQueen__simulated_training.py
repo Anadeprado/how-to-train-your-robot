@@ -7,8 +7,8 @@
 #   Author: Anita de Prado
 #   Hardware: Arduino Mega2560 + JJROBOTS brain shield v3 (devia)
 #
-#   Date: 18/01/2017
-#   Version: 2
+#   Date: 20/02/2017
+#   Version: 3
 #
 # License: Open Software GPL License
 ####################################################################
@@ -36,6 +36,27 @@ print '\tNúmero de acciones totales a entrenar = ', TOTALES_A_ENTRENAR
 print '\tDe las cuales no permitidas: ', num_ACCIONES_QUE_JAMAS_SE_ENTRENARAN
 #print 'Además existen todos los estados en los que el disco ya ha sobrepasado al robot'
 
+print ("""
+====================================================
+--ENTRENAMIENTO SIMULADO DEL PROYECTO ICE-QUEEN-----
+====================================================
+
+          0     1     2     3     4     5     6
+       .-----.-----.-----.-----.-----.-----.-----.--> X
+     0 |     |     |     |     |     |     |     |
+       |     |  R  |     |     |     |     |     |
+       .-----.-----.-----.-----.-----.-----.-----.
+     1 |  R  |     |     |     |     |     |     |
+       |     |     |     |     |     |  D  |     |
+       .-----.-----.-----.-----.-----.-----.-----.
+     2 |     |     |     |  D  |  D  |     |  D  |
+       |     |     |     |     |     |     |     |
+       .-----.-----.-----.-----.-----.-----.-----.
+     3 |     |     |     |     |     |     |     |
+       |     |     |     |     |     |     |     |
+       .-----.-----.-----.-----.-----.-----.-----.
+       |
+       Y """)
 
 pos_D0 = [0,0] #Posición anterior disco
 pos_D1 = [0,0] #Posición siguiente disco
@@ -69,30 +90,11 @@ print '\n Inicializando Q...'
 velAprendizaje = 0.5  # alpha  0.3
 factorDescuento = 0.7 # gamma  0.8
 epsilon = 1
+epsilon_limit = 0.8
 
 end_episodio = False
 
-print ("""
-====================================================
---ENTRENAMIENTO SIMULADO DEL PROYECTO ICE-QUEEN-----
-====================================================
 
-          0     1     2     3     4     5     6
-       .-----.-----.-----.-----.-----.-----.-----.--> X
-     0 |     |     |     |     |     |     |     |
-       |     |  R  |     |     |     |     |     |
-       .-----.-----.-----.-----.-----.-----.-----.
-     1 |  R  |     |     |     |     |     |     |
-       |     |     |     |     |     |  D  |     |
-       .-----.-----.-----.-----.-----.-----.-----.
-     2 |     |     |     |  D  |  D  |     |  D  |
-       |     |     |     |     |     |     |     |
-       .-----.-----.-----.-----.-----.-----.-----.
-     3 |     |     |     |     |     |     |     |
-       |     |     |     |     |     |     |     |
-       .-----.-----.-----.-----.-----.-----.-----.
-       |
-       Y """)
 
 
 #------------------------------------------------------------------------
@@ -101,10 +103,6 @@ print ("""
 # Función para simulación que elige aletoriamente unas posiciones iniciales:
 def posicionesIniciales():
     global pos_R,pos_D0,crossedSectors
-
-    # El disco siempre empieza en borde derecho:
-    # pos_D0[0] = NUM_SEC_X-1 #x
-    # pos_D0[1] = randint(0,NUM_SEC_Y-1) #y
 
     # El robot puede empezar en posición aleatoria dentro de sus límites
     pos_R[0]= randint(rxMin,rxMax)
@@ -118,8 +116,6 @@ def posicionesIniciales():
 #------------------------------------------------------------------------
 #-   PRINCIPAL  ---------------------------------------------------------
 #------------------------------------------------------------------------
-
-
 while(1):
     print """
     ¿Qué quieres hacer?
@@ -183,6 +179,7 @@ while(1):
     \t 3- EXPLORACIÓN RÁPIDA + EXPLOTACIÓN (Primero acciones no-entrenadas)
     \n
     \t 4- MODO EXPLOTACIÓN PERSONALIZADO
+
         """
         str = raw_input(">> ");
         modo_Entrenamiento = int(str)
@@ -216,7 +213,7 @@ while(1):
             #pos_D1 = movimientoDiscoAleatorio(pos_D0)
             step = 1
             pos_D1 = PosDisco(crossedSectors,step)
-            step+=1
+            step += 1
             S_1 = calculoEstado(pos_D0, pos_D1, pos_R)
 
             while(end_episodio==False):
@@ -227,9 +224,9 @@ while(1):
                 if modo_Entrenamiento == 1:
                     a = elegirAccionAleatoria(pos_R)
                 elif modo_Entrenamiento == 2:
-                    a = elegirAccion(pos_R, S, Q, epsilon,'explot_eps')
+                    a = elegirAccion(pos_R, S, Q, epsilon,'explot_eps', epsilon_limit)
                 elif modo_Entrenamiento == 3:
-                    a = elegirAccion(pos_R, S, Q, epsilon,'explot_eps_fast')
+                    a = elegirAccion(pos_R, S, Q, epsilon,'explot_eps_fast', epsilon_limit)
 
                 pos_R0 = pos_R
 
@@ -242,26 +239,27 @@ while(1):
                 pos_D0 = pos_D1
 
                 # Se mueve el disco --> pos_D1
-                #pos_D1 = movimientoDiscoAleatorio(pos_D0)
                 pos_D1 = PosDisco(crossedSectors,step)
-                step+=1
+                step += 1
 
                 # Calculo estado siguiente --> S_1
                 S_1 = calculoEstado(pos_D0, pos_D1, pos_R)
 
-                # Compruebo si se termina Episodio:
-                if rr == 10:
-                    #print '¡Robot atrapó el disco! :)'
 
-                    if(pos_R0[0]>pos_D0[0]): #Lo empuja pero desde atrás
-                        rr=-2
-                        plotY.append(plotY[-1]-1) #El valor anterior menos 1
+                # Compruebo si se termina Episodio:
+                #------------------------------------------------------
+
+                #print '¡Robot atrapó el disco! :)'
+                if rr == 10:
+                    if(pos_R0[0]>pos_D0[0]): #Lo empuja pero hacia atrás
+                        rr=-5 #2
+                        plotY.append(plotY[-1]-1)
 
                     elif(pos_R0[0]==pos_D0[0]): #Lo empuja lateralmente
-                        rr=0
+                        rr=5 #0
                         _num_exitos += 1
                         _num_paradas += 1
-                        plotY.append(plotY[-1]) #El valor anterior tal cual
+                        plotY.append(plotY[-1]+1) #El valor anterior tal cual
 
                     else:
                         _num_exitos += 1
@@ -275,7 +273,7 @@ while(1):
                 elif distancia(pos_R,pos_D1)==0:
                     #print 'Disco chocó contra robot en S_1'
                     #PARADA pero no atacada...
-                    rr = 2
+                    rr = 1 #2
                     _num_exitos += 1
                     _num_paradas += 1
                     plotY.append(plotY[-1]) #El valor anterior tal cual
@@ -293,6 +291,8 @@ while(1):
                     plotEpsi.append(porcentajeEntrenamiento)
                     end_episodio = True
 
+                #------------------------------------------------------
+
                 # Guardo Experiencia completa:  <S,a,rr,S_1>
                 experience = [S,a,rr,S_1]
                 experiences.append(experience)
@@ -307,6 +307,7 @@ while(1):
 
             no_entrenadas = 100-porcentajeEntrenamiento
             epsilon = no_entrenadas/100
+
 
             #Actualizo variables para mostrar en plot
             plotX.append(episodio)
@@ -337,16 +338,15 @@ while(1):
         #plt.figure(1)
         #plt.title(tit)
 
+
         plt.subplot(211)
-        #plt.title('Frecuencia de exito ENTRENANDO')
-        #plt.xlabel('Numero de lanzamiento') # etiqueta eje x
+
         plt.ylabel('Frecuencia de exito') # etiqueta eje y
         plt.xlabel('')
         plt.plot(plotX,plotY,'r')
 
         plt.subplot(212)
-        #plt.title('Porcentaje entrenamiento')
-        #plt.xlabel('Numero de lanzamiento') # etiqueta eje x
+
         plt.ylim(0,110)  # Limitamos los valores del eje x para que vayan desde 0 a 100
         plt.ylabel('Porcentaje entrenamiento') # etiqueta eje y
         plt.xlabel('')
@@ -402,15 +402,15 @@ while(1):
                 S_1 = calculoEstado(pos_D0, pos_D1, pos_R)
 
                 # Compruebo si se termina Episodio:
+                #-------------------------------------------------------------
+
+                #print '¡Robot atrapó el disco! :)'
                 if rr == 10:
-                    #print '¡Robot atrapó el disco! :)'
 
                     if(pos_R0[0]>pos_D0[0]): #Lo empuja pero desde atrás
-                        rr=-2
                         plot_final_Y.append(plot_final_Y[-1]-1) #El valor anterior menos 1
 
                     elif(pos_R0[0]==pos_D0[0]): #Lo empuja lateralmente
-                        rr=0
                         _num_exitos += 1
                         _num_paradas += 1
                         plot_final_Y.append(plot_final_Y[-1]) #El valor anterior tal cual
@@ -422,11 +422,9 @@ while(1):
 
                     end_episodio = True
 
-
                 elif distancia(pos_R,pos_D1)==0:
                     #print 'Disco chocó contra robot en S_1'
                     #PARADA pero no atacada...
-                    rr = 2
                     _num_exitos += 1
                     _num_paradas += 1
                     plot_final_Y.append(plot_final_Y[-1]) #El valor anterior tal cual
@@ -439,6 +437,8 @@ while(1):
                     #     rr = -1
                     plot_final_Y.append(plot_final_Y[-1]-1) #El valor anterior menos 1
                     end_episodio = True
+
+                #-------------------------------------------------------------
 
             #Actualizo variables para mostrar en plot
             plot_final_X.append(episodio)
@@ -474,7 +474,3 @@ while(1):
 
 
 cv2.destroyAllWindows()
-
-
-
-# PORCENTAJE DE EXITO AL JUGAR ES MÁS REPRESENTATIVO QUE % ENTRENAMIENTO

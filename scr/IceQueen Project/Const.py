@@ -11,7 +11,7 @@
 # Velocidad y aceleración de los motores paso a paso.
 #   SLOW : durante el entrenamiento
 #   FAST : para jugar
-ACCEL_SLOW = 110     #100 - 130
+ACCEL_SLOW = 111     #100 - 130
 SPEED_SLOW = 10000
 ACCEL_FAST = 110     #110 - 130
 SPEED_FAST = 15000   #15000 - 16000
